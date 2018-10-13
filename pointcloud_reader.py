@@ -35,7 +35,9 @@ if __name__ == '__main__':
     y=(-40, 40)
     z=(-2.5, 1.5)
     
-    pc_logicalbounds = apply_logicalbounds_topc(pc, x=x, y=y, z=z)
+    #pc_logicalbounds = apply_logicalbounds_topc(pc, x=x, y=y, z=z)
+    logical_bounds = get_pc_logicaldivision(pc, x=x, y=y, z=z)
+    pc_logicalbounds = apply_logicalbounds_topc(pc, logical_bounds)
     pc_quantized = quantize_pc(pc_logicalbounds, resolution=resolution, x=x, y=y, z=z, quant='low')
     voxel =  draw_to_voxel(pc_quantized, resolution=resolution, x=x, y=y, z=z)
 

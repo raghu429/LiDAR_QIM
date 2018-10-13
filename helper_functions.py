@@ -44,7 +44,7 @@ def get_min_max_ofpc(pc):
     return x_min,y_min,z_min, x_max,y_max,z_max
 
 
-def apply_logicalbounds_topc(pc, x=(0, 90), y=(-50, 50), z=(-4.5, 5.5)):
+def get_pc_logicaldivision(pc, x=(0, 90), y=(-50, 50), z=(-4.5, 5.5)):
     """Convert PointCloud2 to Voxel"""
 
     print('max and min values of raw point cloud')
@@ -52,7 +52,7 @@ def apply_logicalbounds_topc(pc, x=(0, 90), y=(-50, 50), z=(-4.5, 5.5)):
 
     #note: the original point cloud has four columns
     print('pc shape before any modificatins', pc.shape)
-    print('pc before modification first 25 elements', pc[:25,:])
+    #print('pc before modification first 25 elements', pc[:25,:])
 
     #we start the filtering process to filter out the point cloud that we dont need
     logic_x = np.logical_and(pc[:, 0] >= x[0], pc[:, 0] < x[1])
@@ -79,7 +79,11 @@ def apply_logicalbounds_topc(pc, x=(0, 90), y=(-50, 50), z=(-4.5, 5.5)):
     logic_x_yz = np.logical_and(logic_x, logic_yz)
     print('logic_yz length', np.count_nonzero(logic_x_yz == 1))
 
-    pc_logical_division = pc[:, :3][logic_x_yz]
+    return logic_x_yz
+
+def apply_logicalbounds_topc(pc, logical_division):
+
+    pc_logical_division = pc[:, :3][logical_division]
     
     print('max and min values of pc after logical distribution')
     get_min_max_ofpc(pc_logical_division)

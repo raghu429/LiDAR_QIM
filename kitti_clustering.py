@@ -266,6 +266,32 @@ def kitti_cluster(pc_in):
   #table_publisher.publish(table_msg)
   #clusters_publisher.publish(clusters_msg)
 
+def get_clustercenteroid(cluster_corner_list):
+    #make sure that the shape is what you expect index * rows (8) * columns (3)
+    cluster_corner_list = np.reshape(cluster_corner_list,(-1, 8, 3))
+    print('cluster_corner_list shape', cluster_corner_list.shape)
+    cluster_centeroid_list = np.array([[np.average(cluster_corner_list[i,:,0]), np.average(cluster_corner_list[i,:,1]), np.average(cluster_corner_list[i,:,2])] for i in range(0, cluster_corner_list.shape[0])])
+    
+    print ('cluster centeroid shape and value', cluster_centeroid_list.shape, cluster_centeroid_list)
+
+    return cluster_centeroid_list
+
+def get_kdtree_ofpc(points):
+    #In this function since we try to get a kd-tree from point cloud library we need to convert the input numpy array into point cloud
+    pc_points = pcl.PointCloud(points)
+    kdtree_points = pc_points.make_kdtree_flann()
+
+    return(kdtree_points)
+
+#Have the raw camera filtered point cloud (-1,3) format and runt throhg the clustering
+#       #for each cluster corner in cluster_corners_filtered - get the min,max of each axis to populate the x,y,z bounds - (x,) format
+#       #Then run the get_pc_logicalbounds and apply_logicalbounds_topc to highlight the cluster points
+#take the z axis and apply gaussian noise to the z components of these points
+#for the remaining cloud add a different gaussian noise
+# def add_gausiannoise(pointcloud_raw, cluster_list, sigmalist):
+#     pc = pointcloud_raw.reshape(-1,3)
+#     for 
+
 
 if __name__ == '__main__':
 
@@ -281,12 +307,12 @@ if __name__ == '__main__':
   # read pcl and the point clid
   #kitti_cluster("./data/002937.bin")
   # Get a point cloud of only the position information without color information
-  velodyne_path = "./data/000002.bin"
+#  velodyne_path = "./data/000002.bin"
 #  velodyne_path = "./data/000003.bin"
 #  velodyne_path = "./data/000004.bin"
 #  velodyne_path = "./data/000005.bin"
 #  velodyne_path = "./data/000006.bin"
-#  velodyne_path = "./data/002937.bin"
+  velodyne_path = "./data/002937.bin"
 
 # read the point cloud from pcd file
   points_list = load_pc_from_bin(velodyne_path)
@@ -298,17 +324,38 @@ if __name__ == '__main__':
   y=(-40, 40)
   z=(-2.5, 1.5)
     
-  pc_logicalbounds = apply_logicalbounds_topc(points_list, x=x, y=y, z=z)
+  #pc_logicalbounds = apply_logicalbounds_topc(points_list, x=x, y=y, z=z)
+  logical_bounds = get_pc_logicaldivision(points_list, x=x, y=y, z=z)
+  pc_logicalbounds = apply_logicalbounds_topc(points_list, logical_bounds)
   #In the camera angle filter function we remove the ground  plane by doing z thresholding
   pc_camera_angle_filtered  = filter_camera_angle_groundplane(points_list[:,:3])
 
   cluster_cloud_color, cluster_corners = kitti_cluster(pc_camera_angle_filtered)
+  cluster_centeroids = get_clustercenteroid(cluster_corners) #here we get a flat (288,) element point array this could be reshaped to (12,8,3) i,e 12 corners with (8,3) or (96,3) i,e 96  x,y,z, points
 
+  #print('cluster centeroid[:, 0]', cluster_centeroids[:, 0] )
+  #these logical bounds which si a flat array of rue or False of the size of number of clusters can be used to extract corners from the cluster_corners in the next step.
+  cluster_logical_bounds = get_pc_logicaldivision(cluster_centeroids.reshape(-1,3), x=(0,80), y=(-5, 5), z=(-1.5,1.5))
+  
+  print('cluster logical bounds', cluster_logical_bounds)
+  cluster_corners_filtered = cluster_corners.reshape(-1,8,3)[cluster_logical_bounds]
+  print('cluster corneres filtered shape', cluster_corners_filtered.shape)
+  
+  filtered_cluster_centeroids = apply_logicalbounds_topc(cluster_centeroids.reshape(-1,3), cluster_logical_bounds)
+  print('filtered centeroids shape & values', filtered_cluster_centeroids.shape, filtered_cluster_centeroids)
+
+  #this is an optional step and can be removed if needed later 
+  #kdtree_centerids = get_kdtree_ofpc(filtered_cluster_centeroids)
+
+#   Here the encoding starts
   i = 0
   # Spin while node is not shutdown
   while not rospy.is_shutdown():
     # read pcl and the point clid
     publish_pc2(cluster_corners.reshape(-1,3)[:,:], "/pointcloud_clustercorners")
+    publish_pc2(cluster_centeroids.reshape(-1,3)[:,:], "/pointcloud_clustercorners_centeroids")
+    publish_pc2(filtered_cluster_centeroids.reshape(-1,3)[:,:], "/pointcloud_clustercorners_centeroids_filtered")
+    publish_pc2(cluster_corners_filtered.reshape(-1,3)[:,:], "/pointcloud_clustercorners_filtered")
     publish_pc2(pc_camera_angle_filtered, "/pointcloud_camerafiltered_clustering")
     clusters_publisher.publish(cluster_cloud_color)
     print('spinn count', i)
