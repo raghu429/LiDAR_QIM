@@ -10,6 +10,7 @@ import struct
 import ctypes
 import std_msgs.msg
 from helper_functions import *
+from tamper_pc import *
 
 
 
@@ -153,7 +154,7 @@ def get_colored_clusters(clusters, cloud):
   print('cloud', cloud[7], cloud[8], cloud[9])
   #print('cloud elements 7,8,9,10', cloud[7, :], cloud[8, :], cloud[9, :], cloud[10, :])
   for cluster_id, cluster in enumerate(clusters):
-    print ('cluster id and length and cluster', cluster_id, len(cluster), cluster)
+    #print ('cluster id and length and cluster', cluster_id, len(cluster), cluster)
     for c, i in enumerate(cluster):
       x, y, z = cloud[i][0], cloud[i][1], cloud[i][2]
       color = rgb_to_float(colors[cluster_id])
@@ -173,7 +174,7 @@ def get_clustercorners(clusters, cloud):
              #print('cluster: %s values:%s', c, [x,y,z])
         #print('cluster points list', cluster_point_list)
         cluster_point_list = cluster_point_list.reshape(-1, 3)
-        print('cluster points list & shape', cluster_point_list, cluster_point_list.shape)
+        #print('cluster points list & shape', cluster_point_list, cluster_point_list.shape)
         #print('cluster points shape', cluster_point_list.shape)
         x_min = cluster_point_list[:,0].min()
         y_min = cluster_point_list[:,1].min()
@@ -189,7 +190,7 @@ def get_clustercorners(clusters, cloud):
         corner = get_boundingboxcorners([x_min, y_min, z_min], [x_max, y_max, z_max])
         print('corner shape & value', corner.shape, corner)
         corners = np.append(corners, [corner])
-    print('corner shape and values', corners.shape, corners)
+    #print('corner shape and values', corners.shape, corners)
     return corners
 
 def get_boundingboxcorners(point_min, point_max):
@@ -282,15 +283,65 @@ def get_kdtree_ofpc(points):
     kdtree_points = pc_points.make_kdtree_flann()
 
     return(kdtree_points)
+  
+#Compare the cluster centeroids
+def get_clustercenteroid_changeindex(reference_list, modified_list, threshold):
+    
+    #determine the lengths of point clouds
+    reference_len = reference_list.shape[0]
+    modified_len = modified_list.shape[0]
+    
+    #make a kd tree of reference list
+    kdtree_reference_centeroids = get_kdtree_ofpc(reference_list.astype(np.float32))
 
-#Have the raw camera filtered point cloud (-1,3) format and runt throhg the clustering
-#       #for each cluster corner in cluster_corners_filtered - get the min,max of each axis to populate the x,y,z bounds - (x,) format
-#       #Then run the get_pc_logicalbounds and apply_logicalbounds_topc to highlight the cluster points
-#take the z axis and apply gaussian noise to the z components of these points
-#for the remaining cloud add a different gaussian noise
-# def add_gausiannoise(pointcloud_raw, cluster_list, sigmalist):
-#     pc = pointcloud_raw.reshape(-1,3)
-#     for 
+    #make the point cloud reference to the modified list
+    modified_points = pcl.PointCloud(modified_list.astype(np.float32))
+
+    #find the closest point index and the distance
+    indices, sqr_distances = kdtree_reference_centeroids.nearest_k_search_for_cloud(modified_points, 1)
+    
+    suspect_indices = []
+    modified_list_missing_indices =[]
+    nonsuspect_indices = []
+
+    print('indices and distances', indices, sqr_distances)
+
+    for i in range(0, reference_len):
+        print('index of the closest point in reference_list to point %d in modified_list is %d' % (i, indices[i, 0]))
+        print('the squared distance between these two points is %f' % sqr_distances[i, 0])
+        if(sqr_distances[i, 0] > threshold):
+            suspect_indices.append(i)
+        else:
+            nonsuspect_indices.append(i)
+
+    print('suspect indices', suspect_indices)
+    print('non suspect indices', nonsuspect_indices)
+    
+    modified_list_indices  = np.arange(modified_len)
+    
+    #check which indices are missing in the modified list
+    modified_list_missing_set = set(nonsuspect_indices).symmetric_difference(set(modified_list_indices))
+
+    print('missing indices set length', len(list(modified_list_missing_set)))
+    #retrieve elements from the set
+    for i in range(0, len(list(modified_list_missing_set))):
+        modified_list_missing_indices.append(list(modified_list_missing_set)[i])
+        print('modified_list_missing_index', list(modified_list_missing_set)[i])
+    
+    #concatenate two lists
+    suspect_cluster_indices = modified_list_missing_indices + suspect_indices
+    print('final suspect indices', suspect_cluster_indices) 
+
+    return suspect_cluster_indices
+
+
+def linearcorrelation_comparison(mean, variance, noise_length, point_cloud, axis):
+    reference_noise = np.random.normal(mean, variance, noise_length)
+    # Do the correlation
+    lcs = np.correlate(reference_noise, point_cloud[:, axis])
+    correlation_value = (lcs/noise_length) 
+    print('lcs', correlation_value)
+    return (correlation_value)
 
 
 if __name__ == '__main__':
@@ -312,10 +363,17 @@ if __name__ == '__main__':
 #  velodyne_path = "./data/000004.bin"
 #  velodyne_path = "./data/000005.bin"
 #  velodyne_path = "./data/000006.bin"
-  velodyne_path = "./data/002937.bin"
+  #velodyne_path = "./data/002937.bin"
+  velodyne_path = "./data/002937_addedcar.pcd"
 
 # read the point cloud from pcd file
-  points_list = load_pc_from_bin(velodyne_path)
+  dataformat = 'pcd'
+  if dataformat == "bin":
+    points_list = load_pc_from_bin(velodyne_path)
+  elif dataformat == "pcd":
+    points_list = load_pc_from_pcd(velodyne_path)
+
+#points_list = load_pc_from_bin(velodyne_path)
 #convert the point cloud list into a pcl xyz format
 
   resolution = 0.2
@@ -347,12 +405,32 @@ if __name__ == '__main__':
   #this is an optional step and can be removed if needed later 
   #kdtree_centerids = get_kdtree_ofpc(filtered_cluster_centeroids)
 
-#   Here the encoding starts
+  # Here the encoding starts
+  min_sigma = 0.1
+  max_sigma  = 0.5
+  gap = (max_sigma - min_sigma)/filtered_cluster_centeroids.shape[0]
+  sigmalist = np.arange(min_sigma,max_sigma,gap)
+  meanlist =  np.zeros(filtered_cluster_centeroids.shape[0])
+  axis = 2
+  global_std = 0.001
+  global_mean = 0.0
+  encoded_pointcoud = add_gaussianNoise_clusters(pc_camera_angle_filtered, filtered_cluster_centeroids, sigmalist, meanlist, axis, global_std, global_mean)
+
+ 
+#   #decoding steps:
+#   1. read the point cloud
+#   2. run it through filter_camera_angle_groundplane
+#   3. get the clusters and their cluster_centeroids
+#   4. compare cluster centeroids to get the suspect cluster index
+#   5. do the crrelation starting from the suspect cluster and find out the cluster where there is no correlation
+
+
   i = 0
   # Spin while node is not shutdown
   while not rospy.is_shutdown():
     # read pcl and the point clid
     publish_pc2(cluster_corners.reshape(-1,3)[:,:], "/pointcloud_clustercorners")
+    publish_pc2(encoded_pointcoud.reshape(-1,3)[:,:], "/pointcloud_encoded")
     publish_pc2(cluster_centeroids.reshape(-1,3)[:,:], "/pointcloud_clustercorners_centeroids")
     publish_pc2(filtered_cluster_centeroids.reshape(-1,3)[:,:], "/pointcloud_clustercorners_centeroids_filtered")
     publish_pc2(cluster_corners_filtered.reshape(-1,3)[:,:], "/pointcloud_clustercorners_filtered")

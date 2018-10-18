@@ -43,6 +43,8 @@ def get_min_max_ofpc(pc):
     print('min_x: %s, min_y: %s, min_z: %s, max_x: %s, max_y: %s, max_z: %s' %(x_min,y_min,z_min, x_max,y_max,z_max))
     return x_min,y_min,z_min, x_max,y_max,z_max
 
+def dist(x,y):   
+    return np.sqrt(np.sum((x-y)**2))
 
 def get_pc_logicaldivision(pc, x=(0, 90), y=(-50, 50), z=(-4.5, 5.5)):
     """Convert PointCloud2 to Voxel"""
@@ -136,18 +138,33 @@ def draw_to_voxel(pc, resolution=0.50, x=(0, 90), y=(-50, 50), z=(-4.5, 5.5)):
     
     return voxel
 
-def filter_camera_angle_groundplane(places):
+def filter_camera_angle(places):
     """Filter camera angles for KiTTI Datasets"""
     print('places point cloud shape', places.shape)
-    xy_filter = np.logical_and((places[:, 1] < places[:, 0] - 0.27), (-places[:, 1] < places[:, 0] - 0.27))
-    print('xy filter length', np.count_nonzero(xy_filter == 1))
-    z_filter = (places[:, 2] > -1.0)
+    xy_Camerafilter = np.logical_and((places[:, 1] < places[:, 0] - 0.27), (-places[:, 1] < places[:, 0] - 0.27))
+    print('xy filter length', np.count_nonzero(xy_Camerafilter == 1))
+    # z_filter = (places[:, 2] > -1.0)
+    # print('z filter length', np.count_nonzero(z_filter == 1))
+    # bool_in = np.logical_and(xy_filter, z_filter)
+    # print('filter camera shape', bool_in.shape)
+    # print('filter camera with Ture values', np.count_nonzero(bool_in == 1))
+    # #bool_in = np.logical_and((places[:, 1] < places[:, 0]), (-places[:, 1] < places[:, 0]))
+    return places[xy_Camerafilter]
+
+def filter_groundplane(places, z_threshold):
+    """Filter camera angles for KiTTI Datasets"""
+    #print('places point cloud shape', places.shape)
+    #xy_filter = np.logical_and((places[:, 1] < places[:, 0] - 0.27), (-places[:, 1] < places[:, 0] - 0.27))
+    #print('xy filter length', np.count_nonzero(xy_filter == 1))
+    z_filter = (places[:, 2] > z_threshold)
     print('z filter length', np.count_nonzero(z_filter == 1))
-    bool_in = np.logical_and(xy_filter, z_filter)
-    print('filter camera shape', bool_in.shape)
-    print('filter camera with Ture values', np.count_nonzero(bool_in == 1))
+    #bool_in = np.logical_and(xy_filter, z_filter)
+    #print('filter camera shape', bool_in.shape)
+    #print('filter camera with Ture values', np.count_nonzero(bool_in == 1))
     #bool_in = np.logical_and((places[:, 1] < places[:, 0]), (-places[:, 1] < places[:, 0]))
-    return places[bool_in]
+    return places[z_filter]
+
+
 
 def filter_camera_angle(places):
     """Filter camera angles for KiTTI Datasets"""
