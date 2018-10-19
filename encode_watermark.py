@@ -12,6 +12,7 @@ import std_msgs.msg
 from helper_functions import *
 from kitti_clustering import *
 from tamper_pc import *
+import settings
 
 #   #Encoding steps:
 #   1. read the point cloud
@@ -20,6 +21,9 @@ from tamper_pc import *
 #   4. encode the z-axis of the point cloud (relevant clusters and remaining cloud) with different sigma gaussian noise and 
 
 if __name__ == '__main__':
+
+#initialize gloabals
+  settings.init()
 
  # ROS node initialization
   rospy.init_node('watermark_encodedecode', anonymous = True)
@@ -48,6 +52,7 @@ if __name__ == '__main__':
   #pc_logicalbounds = apply_logicalbounds_topc(points_list, logical_bounds)
   #In the camera angle filter function we remove the ground  plane by doing z thresholding
   pc_camera_angle_filtered  = filter_camera_angle(points_list[:,:3])
+  clean_pc = pc_camera_angle_filtered.copy()
   pc_groundplane_filtered = filter_groundplane(pc_camera_angle_filtered, -1.0)
 
 # STEP 3 : Get the clusters and their cluster_centeroids
@@ -55,8 +60,8 @@ if __name__ == '__main__':
   cluster_cloud_color, cluster_corners = kitti_cluster(pc_groundplane_filtered)
   # Here we get a flat (288,) element point array this could be reshaped 
   # to (12,8,3) i,e 12 corners with (8,3) or (96,3) i,e 96  x,y,z, points
-  cluster_centeroids = get_clustercenteroid(cluster_corners)
-  
+  cluster_centeroids = get_clustercenteroid(cluster_corners)  
+
   #print('cluster centeroid[:, 0]', cluster_centeroids[:, 0] )
   # These logical bounds which is a flat array of True or False of the size of number of clusters can be used
   # Extract corners from clusters that fall within the x,y range of interest
@@ -75,20 +80,89 @@ if __name__ == '__main__':
   # STEP 4: Encode the z-axis of the point cloud (relevant clusters and remaining cloud) with different sigma gaussian noise
   
   #prepare the sigma and mean lists
-  min_sigma = 0.1
-  max_sigma  = 0.5
+  min_sigma = 0.03
+  max_sigma  = 0.09
   gap = (max_sigma - min_sigma)/filtered_cluster_centeroids.shape[0]
   sigmalist = np.arange(min_sigma,max_sigma,gap)
   meanlist =  np.zeros(filtered_cluster_centeroids.shape[0])
   axis = 2
   
   #Bleow call seems to be a call by value hence copy and save the pc_camera_angle_filtered point cloud
-  encoded_pc = pc_camera_angle_filtered
+  
   
   # Encode the point cloud
-  encoded_pointcoud = add_gaussianNoise_clusters(encoded_pc, cluster_corners_filtered.reshape(-1,8,3), sigmalist, meanlist, axis, 0.002, 0)
+  encoded_pointcloud = add_gaussianNoise_clusters(pc_camera_angle_filtered, cluster_corners_filtered.reshape(-1,8,3), sigmalist, meanlist, axis, 0.002, 0)
+  
+  cluster_to_show_num  = 4
+  encoded_cluster_corners = get_clustercorner_totamper(cluster_corners_filtered.reshape(-1,8,3), cluster_to_show_num)
+  encoded_cluster_logicalbounds, x_dist, y_dist, z_dist = get_cluster_logicalbound(pc_groundplane_filtered, encoded_cluster_corners)
+  encoded_cluster = pc_groundplane_filtered[encoded_cluster_logicalbounds]
+  
+  
   #tampered_pc_objectaddition = pctempering_objectaddition(pc_camera_angle_filtered, clustertocopy)
   #tampered_pc_objectremoval = pctempering_objectdeletion(pc_camera_angle_filtered, clustertocopy)
+
+
+  #tampering point cloud
+
+  #get copied cluster
+  cluster_num = 0
+  cluster_corner_totamper = get_clustercorner_totamper(cluster_corners_filtered.reshape(-1,8,3), cluster_num)
+  cluster_logicalbounds, x_dist, y_dist, z_dist = get_cluster_logicalbound(clean_pc, cluster_corner_totamper)
+  #copy_cluster = get_clustercorner_totamper(cluster_corners_filtered.reshape(-1,8,3), cluster_logic_bound)
+  tempered_point_cloud =  pctampering_objectaddition(encoded_pointcloud, clean_pc, cluster_logicalbounds, x_dist, y_dist, z_dist)
+
+
+  #decoding section
+  
+  pc_groundplane_filtered_decode = filter_groundplane(tempered_point_cloud, -1.0)
+
+  # STEP3 : Get the clusters and their cluster_centeroids
+
+  cluster_cloud_color, cluster_corners_decode = kitti_cluster(pc_groundplane_filtered_decode)
+  # Here we get a flat (288,) element point array this could be reshaped 
+  # to (12,8,3) i,e 12 corners with (8,3) or (96,3) i,e 96  x,y,z, points
+  cluster_centeroids_decode = get_clustercenteroid(cluster_corners_decode)
+
+  #print('cluster centeroid[:, 0]', cluster_centeroids[:, 0] )
+  # These logical bounds which is a flat array of True or False of the size of number of clusters can be used
+  # to extract corners from the cluster_corners_decode in the next step.
+  cluster_logical_bounds_decode = get_pc_logicaldivision(cluster_centeroids_decode.reshape(-1,3), x=(0,80), y=(-5, 5), z=(-1.5,1.5))
+  print('decode: cluster logical bounds', cluster_logical_bounds_decode)
+
+  cluster_corners_filtered_decode = cluster_corners_decode.reshape(-1,8,3)[cluster_logical_bounds_decode]
+  print('decode: cluster corneres filtered shape', cluster_corners_filtered_decode.shape)
+
+  filtered_cluster_centeroids_decode = apply_logicalbounds_topc(cluster_centeroids_decode.reshape(-1,3), cluster_logical_bounds_decode)
+  print('Decode: filtered centeroids decode shape & values', filtered_cluster_centeroids_decode.shape, filtered_cluster_centeroids_decode)
+
+
+  threshold =  0.01
+  suspect_index = get_clustercenteroid_changeindex(filtered_cluster_centeroids, filtered_cluster_centeroids_decode, threshold)
+
+
+  #prelim tests with index 2 and index 0
+
+  # get the correlation coefficients at all the indices of the clusters and figure out if it conicides with the above result
+  # Here: point_cloud is the cluster where you want to check the correlation, noise length is the length of the number of points in the given axis of given cluster 
+  #vairance is the initial variance of the watermarking encoding
+ 
+
+  #cluster_culprit = get_clustercorners_totamper(cluster_corners_filtered_decode.reshape(-1,8,3), 0)
+  #cluster_num  = 1
+  culprit_cluster_corners = get_clustercorner_totamper(cluster_corners_filtered_decode.reshape(-1,8,3), cluster_to_show_num)
+  culprit_cluster_logicalbounds, x_dist, y_dist, z_dist = get_cluster_logicalbound(pc_groundplane_filtered_decode, culprit_cluster_corners)
+  cluprit_cluster = pc_groundplane_filtered_decode[culprit_cluster_logicalbounds]
+  mean = 0
+  if(cluster_num > 5 ):
+    variance = 0.02
+  else:
+    variance = sigmalist[cluster_num]
+  axis = 2  
+  corr_value = linearcorrelation_comparison(mean, variance, cluprit_cluster, axis) 
+
+  print ('corr value for cluster %s is %s' %(0, corr_value))
+
 
   i = 0
   # Spin while node is not shutdown
@@ -96,19 +170,26 @@ if __name__ == '__main__':
     # read pcl and the point clid
     
     #raw point clouds
-    publish_pc2(pc_camera_angle_filtered, "/pc_camerafiltered")
+    publish_pc2(clean_pc, "/clean_pointcloud")
+    publish_pc2(encoded_pointcloud, "/pc_camerafiltered")
     publish_pc2(pc_groundplane_filtered, "/pc_groundfiltered_raw")
-    publish_pc2(encoded_pointcoud.reshape(-1,3)[:,:], "/pointcloud_watermarked")
+    publish_pc2(tempered_point_cloud, "/pc_tampered")
+
+    #publish_pc2(encoded_pointcloud.reshape(-1,3)[:,:], "/pointcloud_watermarked")
     
-    #clusters and centeroids
+    #clusters and centeroids encode
     #clusters_publisher.publish(cluster_cloud_color)
-    publish_pc2(cluster_corners.reshape(-1,3)[:,:], "/pointcloud_clustercorners")
-    publish_pc2(cluster_centeroids.reshape(-1,3)[:,:], "/pointcloud_clustercorners_centeroids")
-    publish_pc2(filtered_cluster_centeroids.reshape(-1,3)[:,:], "/pointcloud_clustercorners_centeroids_filtered")
-    # publish_pc2(cluster_corners_filtered.reshape(-1,3)[:,:], "/pointcloud_clustercorners_filtered")
-    #publish_pc2(tampered_pc_objectaddition, "/tampered_addedobject")
-    #publish_pc2(tampered_pc_objectremoval, "/tampered_removedobject")
+    #publish_pc2(cluster_corners.reshape(-1,3)[:,:], "/pointcloud_clustercorners")
+    #publish_pc2(cluster_centeroids.reshape(-1,3)[:,:], "/pointcloud_clustercorners_centeroids")
+    publish_pc2(filtered_cluster_centeroids.reshape(-1,3)[:,:], "/encode_centeroids_filtered")
     
+    
+    
+  #clusters and centeroids decode
+    publish_pc2(filtered_cluster_centeroids_decode.reshape(-1,3)[:,:], "/decode_centeroids_filtered")
+    publish_pc2(cluprit_cluster.reshape(-1,3)[:,:], "/culprit_cluster")
+    publish_pc2(encoded_cluster.reshape(-1,3)[:,:], "/encoded_cluster")
+
     print('spinn count', i)
     i += 1
   rospy.spin()

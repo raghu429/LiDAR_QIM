@@ -304,10 +304,13 @@ def get_clustercenteroid_changeindex(reference_list, modified_list, threshold):
     modified_list_missing_indices =[]
     nonsuspect_indices = []
 
+    print('refelist len:', reference_len)
+    print('modified len:', modified_len)
+
     print('indices and distances', indices, sqr_distances)
 
     for i in range(0, reference_len):
-        print('index of the closest point in reference_list to point %d in modified_list is %d' % (i, indices[i, 0]))
+        print('index of the closest point in reference_list to point %d in modified_list is %d' % (indices[i, 0],i))
         print('the squared distance between these two points is %f' % sqr_distances[i, 0])
         if(sqr_distances[i, 0] > threshold):
             suspect_indices.append(i)
@@ -335,7 +338,8 @@ def get_clustercenteroid_changeindex(reference_list, modified_list, threshold):
     return suspect_cluster_indices
 
 
-def linearcorrelation_comparison(mean, variance, noise_length, point_cloud, axis):
+def linearcorrelation_comparison(mean, variance, point_cloud, axis):
+    noise_length = point_cloud[:, axis].shape[0]
     reference_noise = np.random.normal(mean, variance, noise_length)
     # Do the correlation
     lcs = np.correlate(reference_noise, point_cloud[:, axis])
@@ -386,9 +390,9 @@ if __name__ == '__main__':
   logical_bounds = get_pc_logicaldivision(points_list, x=x, y=y, z=z)
   pc_logicalbounds = apply_logicalbounds_topc(points_list, logical_bounds)
   #In the camera angle filter function we remove the ground  plane by doing z thresholding
-  pc_camera_angle_filtered  = filter_camera_angle_groundplane(points_list[:,:3])
+  #pc_camera_angle_filtered_clustering  = filter_camera_angle_groundplane(points_list[:,:3])
 
-  cluster_cloud_color, cluster_corners = kitti_cluster(pc_camera_angle_filtered)
+  #cluster_cloud_color, cluster_corners = kitti_cluster(pc_camera_angle_filtered_clustering)
   cluster_centeroids = get_clustercenteroid(cluster_corners) #here we get a flat (288,) element point array this could be reshaped to (12,8,3) i,e 12 corners with (8,3) or (96,3) i,e 96  x,y,z, points
 
   #print('cluster centeroid[:, 0]', cluster_centeroids[:, 0] )
@@ -414,7 +418,7 @@ if __name__ == '__main__':
   axis = 2
   global_std = 0.001
   global_mean = 0.0
-  encoded_pointcoud = add_gaussianNoise_clusters(pc_camera_angle_filtered, filtered_cluster_centeroids, sigmalist, meanlist, axis, global_std, global_mean)
+  #encoded_pointcoud = add_gaussianNoise_clusters(pc_camera_angle_filtered_clustering, filtered_cluster_centeroids, sigmalist, meanlist, axis, global_std, global_mean)
 
  
 #   #decoding steps:
@@ -434,7 +438,7 @@ if __name__ == '__main__':
     publish_pc2(cluster_centeroids.reshape(-1,3)[:,:], "/pointcloud_clustercorners_centeroids")
     publish_pc2(filtered_cluster_centeroids.reshape(-1,3)[:,:], "/pointcloud_clustercorners_centeroids_filtered")
     publish_pc2(cluster_corners_filtered.reshape(-1,3)[:,:], "/pointcloud_clustercorners_filtered")
-    publish_pc2(pc_camera_angle_filtered, "/pointcloud_camerafiltered_clustering")
+    #publish_pc2(pc_camera_angle_filtered_clustering, "/pointcloud_camerafiltered_clustering")
     clusters_publisher.publish(cluster_cloud_color)
     print('spinn count', i)
     i += 1
