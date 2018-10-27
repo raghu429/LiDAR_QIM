@@ -151,7 +151,7 @@ def get_colored_clusters(clusters, cloud):
   #by doing an enumerate on the list of list (clusters) we are adding a counter variable to each cluster
   #in the clusters
   print(' number of elements in the cloud', cloud.size)
-  print('cloud', cloud[7], cloud[8], cloud[9])
+  #print('cloud', cloud[7], cloud[8], cloud[9])
   #print('cloud elements 7,8,9,10', cloud[7, :], cloud[8, :], cloud[9, :], cloud[10, :])
   for cluster_id, cluster in enumerate(clusters):
     #print ('cluster id and length and cluster', cluster_id, len(cluster), cluster)
@@ -184,22 +184,25 @@ def get_clustercorners(clusters, cloud):
         y_max = cluster_point_list[:,1].max()
         z_max = cluster_point_list[:,2].max()
 
-        print('cluter point list min', x_min, y_min, z_min )
-        print('cluter point list min', x_max, y_max, z_max )
+        #print('cluter point list min', x_min, y_min, z_min )
+        #print('cluter point list min', x_max, y_max, z_max )
+        if( (x_min != 0) & (x_max !=0 )):  #this condition has been added t remove centeroids at (0,0,0) appeared when the clusters were removed
+            corner = get_boundingboxcorners([x_min, y_min, z_min], [x_max, y_max, z_max])
+            #print('corner shape & value', corner.shape, corner)
+            corners = np.append(corners, [corner])
 
-        corner = get_boundingboxcorners([x_min, y_min, z_min], [x_max, y_max, z_max])
-        print('corner shape & value', corner.shape, corner)
-        corners = np.append(corners, [corner])
     #print('corner shape and values', corners.shape, corners)
     return corners
 
 def get_boundingboxcorners(point_min, point_max):
-    print('point min', point_min)    
-    print('point max', point_max)
+    #print('point min', point_min)    
+    #print('point max', point_max)
+    #corner = 0
     x, y, z = point_min
     print('x,y,z, min', x,y,z)
     xx, yy, zz = point_max
     print('x,y,z, max', xx,yy,zz)
+    
     #in the following sequence if we want to get the four corners of bottom surface (top view)
     # we need to extract the following rows [0,1, 2, 5]
     #for front view projection we need [0, 2, 3, 4]
@@ -213,7 +216,9 @@ def get_boundingboxcorners(point_min, point_max):
         [xx, y, zz], #top surface top left (6)
         [xx, yy, zz],#top surface top right (7)
         ])
+
     return corner
+
 
 
 def load_pc_from_pcd(pcd_path):
@@ -267,85 +272,8 @@ def kitti_cluster(pc_in):
   #table_publisher.publish(table_msg)
   #clusters_publisher.publish(clusters_msg)
 
-def get_clustercenteroid(cluster_corner_list):
-    #make sure that the shape is what you expect index * rows (8) * columns (3)
-    cluster_corner_list = np.reshape(cluster_corner_list,(-1, 8, 3))
-    print('cluster_corner_list shape', cluster_corner_list.shape)
-    cluster_centeroid_list = np.array([[np.average(cluster_corner_list[i,:,0]), np.average(cluster_corner_list[i,:,1]), np.average(cluster_corner_list[i,:,2])] for i in range(0, cluster_corner_list.shape[0])])
-    
-    print ('cluster centeroid shape and value', cluster_centeroid_list.shape, cluster_centeroid_list)
-
-    return cluster_centeroid_list
-
-def get_kdtree_ofpc(points):
-    #In this function since we try to get a kd-tree from point cloud library we need to convert the input numpy array into point cloud
-    pc_points = pcl.PointCloud(points)
-    kdtree_points = pc_points.make_kdtree_flann()
-
-    return(kdtree_points)
-  
-#Compare the cluster centeroids
-def get_clustercenteroid_changeindex(reference_list, modified_list, threshold):
-    
-    #determine the lengths of point clouds
-    reference_len = reference_list.shape[0]
-    modified_len = modified_list.shape[0]
-    
-    #make a kd tree of reference list
-    kdtree_reference_centeroids = get_kdtree_ofpc(reference_list.astype(np.float32))
-
-    #make the point cloud reference to the modified list
-    modified_points = pcl.PointCloud(modified_list.astype(np.float32))
-
-    #find the closest point index and the distance
-    indices, sqr_distances = kdtree_reference_centeroids.nearest_k_search_for_cloud(modified_points, 1)
-    
-    suspect_indices = []
-    modified_list_missing_indices =[]
-    nonsuspect_indices = []
-
-    print('refelist len:', reference_len)
-    print('modified len:', modified_len)
-
-    print('indices and distances', indices, sqr_distances)
-
-    for i in range(0, reference_len):
-        print('index of the closest point in reference_list to point %d in modified_list is %d' % (indices[i, 0],i))
-        print('the squared distance between these two points is %f' % sqr_distances[i, 0])
-        if(sqr_distances[i, 0] > threshold):
-            suspect_indices.append(i)
-        else:
-            nonsuspect_indices.append(i)
-
-    print('suspect indices', suspect_indices)
-    print('non suspect indices', nonsuspect_indices)
-    
-    modified_list_indices  = np.arange(modified_len)
-    
-    #check which indices are missing in the modified list
-    modified_list_missing_set = set(nonsuspect_indices).symmetric_difference(set(modified_list_indices))
-
-    print('missing indices set length', len(list(modified_list_missing_set)))
-    #retrieve elements from the set
-    for i in range(0, len(list(modified_list_missing_set))):
-        modified_list_missing_indices.append(list(modified_list_missing_set)[i])
-        print('modified_list_missing_index', list(modified_list_missing_set)[i])
-    
-    #concatenate two lists
-    suspect_cluster_indices = modified_list_missing_indices + suspect_indices
-    print('final suspect indices', suspect_cluster_indices) 
-
-    return suspect_cluster_indices
 
 
-def linearcorrelation_comparison(mean, variance, point_cloud, axis):
-    noise_length = point_cloud[:, axis].shape[0]
-    reference_noise = np.random.normal(mean, variance, noise_length)
-    # Do the correlation
-    lcs = np.correlate(reference_noise, point_cloud[:, axis])
-    correlation_value = (lcs/noise_length) 
-    print('lcs', correlation_value)
-    return (correlation_value)
 
 
 if __name__ == '__main__':

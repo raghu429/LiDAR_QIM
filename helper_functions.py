@@ -49,7 +49,7 @@ def dist(x,y):
 def get_pc_logicaldivision(pc, x=(0, 90), y=(-50, 50), z=(-4.5, 5.5)):
     """Convert PointCloud2 to Voxel"""
 
-    print('max and min values of raw point cloud')
+    #print('max and min values of raw point cloud')
     get_min_max_ofpc(pc)
 
     #note: the original point cloud has four columns
@@ -58,14 +58,14 @@ def get_pc_logicaldivision(pc, x=(0, 90), y=(-50, 50), z=(-4.5, 5.5)):
 
     #we start the filtering process to filter out the point cloud that we dont need
     logic_x = np.logical_and(pc[:, 0] >= x[0], pc[:, 0] < x[1])
-    print('logic_x length', np.count_nonzero(logic_x == 1))
+    #print('logic_x length', np.count_nonzero(logic_x == 1))
     
     logic_y = np.logical_and(pc[:, 1] >= y[0], pc[:, 1] < y[1])
     #print(logic_y)
-    print('logic_y length', np.count_nonzero(logic_y == 1))
+    #print('logic_y length', np.count_nonzero(logic_y == 1))
 
     logic_z = np.logical_and(pc[:, 2] >= z[0], pc[:, 2] < z[1])
-    print('logic_z length', np.count_nonzero(logic_z == 1))
+    #print('logic_z length', np.count_nonzero(logic_z == 1))
 
 
     #print(logic_z)
@@ -76,10 +76,10 @@ def get_pc_logicaldivision(pc, x=(0, 90), y=(-50, 50), z=(-4.5, 5.5)):
     #this would select all the rows in pc that had True value in the np.logical_and(logic_x, np.logical_and(logic_y, logic_z))
     #this part finishes the filtering of unwanted point cloud by selecting only the rows that are relevant
     logic_yz = np.logical_and(logic_y, logic_z)
-    print('logic_yz length', np.count_nonzero(logic_yz == 1))
+    #print('logic_yz length', np.count_nonzero(logic_yz == 1))
 
     logic_x_yz = np.logical_and(logic_x, logic_yz)
-    print('logic_yz length', np.count_nonzero(logic_x_yz == 1))
+    #print('logic_yz length', np.count_nonzero(logic_x_yz == 1))
 
     return logic_x_yz
 
@@ -91,7 +91,7 @@ def apply_logicalbounds_topc(pc, logical_division):
     get_min_max_ofpc(pc_logical_division)
 
     print('after logical anding pc shape', pc_logical_division.shape)
-    print('after logical anding first 25 elements', pc_logical_division[:25,:])
+    #print('after logical anding first 25 elements', pc_logical_division[:25,:])
     
     return pc_logical_division
 
