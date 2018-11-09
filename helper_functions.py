@@ -21,6 +21,12 @@ def load_pc_from_bin(bin_path):
     obj = np.fromfile(bin_path, dtype=np.float32).reshape(-1, 4)
     return obj
 
+def write_to_pcd(output_filename, numpylist_in):
+    out_pcd = pcl.PointCloud
+    out_pcd.from_array(numpylist_in)
+    out_pcd.to_file(output_filename)
+
+
 def publish_pc2(pc, topic):
     """Publisher of PointCloud data"""
     pub1 = rospy.Publisher(topic, PointCloud2, queue_size=10000)
@@ -28,7 +34,7 @@ def publish_pc2(pc, topic):
     header = std_msgs.msg.Header()
     header.stamp = rospy.Time.now()
     header.frame_id = "velodyne"
-    points = pc2.create_cloud_xyz32(header, pc[:, :3])
+    points = pc2.create_cloud_xyz32(header, pc[:, :3].astype(np.float32))
     pub1.publish(points)
     
 def get_min_max_ofpc(pc):
@@ -180,3 +186,56 @@ def do_voxel_grid_filter(point_cloud, LEAF_SIZE = 0.01):
   voxel_filter = point_cloud.make_voxel_grid_filter()
   voxel_filter.set_leaf_size(LEAF_SIZE, LEAF_SIZE, LEAF_SIZE) 
   return voxel_filter.filter()
+
+def measure_distortion(pointCloud_base, pointCloud_modified):
+    #print('base shape:', pointCloud_base.shape)
+    #print('modified shape:', pointCloud_modified.shape)
+    if(pointCloud_base.shape != pointCloud_modified.shape):
+        print('point cloud shapes do not match')
+    
+    rmse = 0.0
+    for i in range(0, pointCloud_base.shape[0]):
+        #rmse = rmse + np.linalg.norm(pointCloud_base[i]-pointCloud_modified[i]).astype(np.float64)
+        rmse = rmse + eucledian_distance(pointCloud_base[i],pointCloud_modified[i])
+        
+        #print('rmse', rmse)
+    rmse = np.sqrt(rmse/pointCloud_base.shape[0]).astype(np.float32)
+    return rmse
+
+    #if(np.isnan())
+    #if there are any nans in the data skip them.. but we could do this pre-processing before hand
+
+def eucledian_distance(pointa, pointb):
+    #print('point a', pointa.shape)
+    #print('point b', pointb)
+    a =  pointa[0]-pointb[0]
+    #print('a', a)
+    b =  pointa[1]-pointb[1]
+    #print('b', b)
+    c =  pointa[2]-pointb[2]
+    #print('c', c)
+    dist = np.sqrt((a)**2 +(b)**2 +(c)**2).astype(np.float64)
+    #print('dist', dist)
+    return dist
+
+# def eucledian_distance(pointa, pointb):
+#     #print('point a', pointa)
+#     #print('point b', pointb)
+#     a =  pointa[:,0]-pointb[:, 0]
+#     #print('a', a)
+#     b =  pointa[:, 1]-pointb[:, 1]
+#     #print('b', b)
+#     c =  pointa[:, 2]-pointb[:, 2]
+#     #print('c', c)
+#     dist = np.sqrt((a)**2 +(b)**2 +(c)**2).astype(np.float64)
+#     #print('dist', dist)
+#     return dist
+
+def add_gaussian_noise(seed, data, mean_noise, std_dev_noise):
+    #initate the random generator with seed
+    np.random.seed(seed)
+    noise = np.random.normal(mean_noise, std_dev_noise, data.shape)
+    #print('noise shape', noise.shape)
+    #print('noise data:', noise[:3, :])
+    noisy_data = data + noise
+    return noisy_data

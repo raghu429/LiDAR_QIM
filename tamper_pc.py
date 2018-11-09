@@ -41,7 +41,7 @@ def pctampering_objectaddition(pointcloud_input, clean_pc, logical_bound, xrange
     
     #get the displacement
     
-    displacemnet = yrange*2
+    displacemnet = yrange*3
    
     if (ymax < 0):
         #modify the cluster
@@ -49,8 +49,8 @@ def pctampering_objectaddition(pointcloud_input, clean_pc, logical_bound, xrange
     else:
         #modify the cluster
         cluster_to_copy[:,1] = cluster_to_copy[:,1] - displacemnet
-
-
+        
+    cluster_center = np.array([np.average(cluster_to_copy[:,0]), np.average(cluster_to_copy[:,1]), np.average(cluster_to_copy[:,2])])
     #concatenate the cluster with point cloud
     updated_point_cloud = np.concatenate((pc, cluster_to_copy), axis =0)
     
@@ -58,7 +58,7 @@ def pctampering_objectaddition(pointcloud_input, clean_pc, logical_bound, xrange
     print('clusterotcopy shape', cluster_to_copy.shape)
     #print('pc shpae and values', pc[clusterlogical_bound].shape, pc[clusterlogical_bound])
 
-    return updated_point_cloud
+    return updated_point_cloud, cluster_center
 
 
 def pctampering_objectdeletion(pointcloud_input, logical_bound):
@@ -72,9 +72,9 @@ def pctampering_objectdeletion(pointcloud_input, logical_bound):
 
 def pctampering_objectmove(pointcloud_input, clean_pc, logical_bound, xrange, yrange, zrange, ymax):
     pc = pctampering_objectdeletion(pointcloud_input,logical_bound)
-    pc = pctampering_objectaddition(pointcloud_input, clean_pc, logical_bound, xrange, yrange, zrange, ymax)
+    pc_out, cluster_centeroid = pctampering_objectaddition(pc[:], clean_pc, logical_bound, xrange, yrange, zrange, ymax)
 
-    return pc
+    return pc_out, cluster_centeroid
 
 
 
@@ -313,12 +313,14 @@ def linear_correlation(a,b):
     return(lin_corr)
 
 
-def get_culpritclusterlist(modified_list, suspect_centeroid_list, modified_pc, sci_list, threshold, ml, sl, axis):
+def get_culpritclusterlist(validation, modified_list, suspect_centeroid_list, modified_pc, sci_list, threshold, ml, sl, axis):
     
     corner_list = []
     mean = ml
     variance  = sl 
     axis = axis
+    localization_count_centeroid = 0
+    localization_count_corner = 0
 
     for i in range( len(suspect_centeroid_list) ):
             
@@ -331,52 +333,75 @@ def get_culpritclusterlist(modified_list, suspect_centeroid_list, modified_pc, s
         cluster_corner_logicalbounds, x_dist, y_dist, z_dist, ym = get_cluster_logicalbound(modified_pc, cluster_corner)
         
         culprit_cluster = modified_pc[cluster_corner_logicalbounds]
-        print('culprit cluster', culprit_cluster)
+        #print('culprit cluster', culprit_cluster)
+
+        #calculate the cluster centeroid
+        culprit_cluster_centeroid = get_clustercenteroid(cluster_corner)
         
         if(culprit_cluster.shape[0] == 0): #case of removal
             #send the cluster centeroid
-            culprit_cluster = get_clustercenteroid(cluster_corner)
-            corner_list.append(culprit_cluster)
-            print('dfsdfasfasdfafggggggggggggggggggggggggggg')
-            print('culprit cluster', culprit_cluster)
+            #culprit_cluster = get_clustercenteroid(cluster_corner)
+
+            #here compare the distances of the cluster centeroid to check if they match and then increment the localization counter
+            print('validation first element', validation[1])
+            print('culprit cluster centeroid', culprit_cluster_centeroid)
+            if( eucledian_distance (validation[1].reshape(3), culprit_cluster_centeroid.reshape(3)) < 0.2 ):
+                localization_count_centeroid  += 1
+            
+            corner_list.append(culprit_cluster_centeroid)
+            #print('dfsdfasfasdfafggggggggggggggggggggggggggg')
+            #print('culprit cluster', culprit_cluster)
         else:
             #mean = ml[sci_list[suspect_centeroid_list[i]]]
             #variance  = sl[sci_list[suspect_centeroid_list[i]]]
             #axis = 2
+
+            # here calculate the centeroid distances aswell
+
             lcs = linearcorrelation_comparison(mean, variance, culprit_cluster, axis)
             print('lcs value', lcs)
             #since we have a different noise modulation for clusters and the point cloud we check the correlation with 
             
-            if (abs(lcs) < threshold):
+            if ( (abs(lcs) < threshold ) and (eucledian_distance (culprit_cluster_centeroid.reshape(3), validation[0].reshape(3)) < 0.2 ) ):
                 print('lcs below threshold')
+                localization_count_corner +=   1
                 corner_list.append(culprit_cluster)
                 #corner_list = np.append([corner_list, culprit_cluster])
             
         corner_list =  np.array([corner_list]).reshape(-1,3)
         #print('suspect_corners shape', corner_list.shape)
         
-        return corner_list
+        return corner_list, localization_count_centeroid, localization_count_corner
 
 #cluster_list_tampered = identify_tampered_clusters(rcv_suspect_list[:], tx_suspect_list[:], sorted_centeroids_indices[:], sorted_centeroids_indices_decode[:],  tempered_point_cloud[:], cluster_corners_filtered_decode[:], cluster_corners_filtered[:], threshold_correlation, sigmalist[:], meanlist[:], axis)
-def identify_tampered_clusters(rcv_suspect_centeroidlist, tx_suspect_centeroidlist, sorted_centeroid_indexlist_tx, sorted_centeroid_indexlist_rcv, tempered_pc, rcv_cluster_corners_list, tx_cluster_corners_list, threshold, sigma_list, mean_list, axis):
+def identify_tampered_clusters(is_pc_tampered, val_list, rcv_suspect_centeroidlist, tx_suspect_centeroidlist, sorted_centeroid_indexlist_tx, sorted_centeroid_indexlist_rcv, tempered_pc, rcv_cluster_corners_list, tx_cluster_corners_list, threshold, sigma_list, mean_list, axis):
     # we could have one of these scenarios
     suspect_corners = []
+    detection_count = 0
+    loc_count_center = 0
+    loc_count_corner = 0
 
     print('????????????????????????????????????????????????????OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO')
     #1. The rcv_suspect_centeroidlist is empty & tx_suspect_centeroids list is also empty : This tells that every cluster in tx and rcv match so there is no tampering
     if( (len(rcv_suspect_centeroidlist) == 0) and (len(tx_suspect_centeroidlist) == 0) ):
-        pass
+        if(is_pc_tampered == 0):
+            detection_count += 1
+
     elif ((len(rcv_suspect_centeroidlist) == 0) and (len(tx_suspect_centeroidlist) != 0)): #modified exhausted and reference not => clusters removed
         # this constitutes the case of cluster removal
         
         print('this is the case where %s clusters were removed' %( len(tx_suspect_centeroidlist) ))
         #get the index of the cluster removed and checkout the points and correlate it with corresponding noise. THe value shouilkd be less than threshold confirming the point cloud removal.. hence display that list
-        suspect_corners = get_culpritclusterlist(tx_cluster_corners_list[:], tx_suspect_centeroidlist[:], tempered_pc[:], sorted_centeroid_indexlist_tx[:],threshold,  mean_list[0], sigma_list[0],axis  )
+        suspect_corners, loc_count_center, loc_count_corner = get_culpritclusterlist(val_list, tx_cluster_corners_list[:], tx_suspect_centeroidlist[:], tempered_pc[:], sorted_centeroid_indexlist_tx[:],threshold,  mean_list[0], sigma_list[0],axis  )
+        if(is_pc_tampered == 1):
+            detection_count += 1
 
     elif( (len(rcv_suspect_centeroidlist) != 0) and (len(tx_suspect_centeroidlist) == 0) ): #modified is not exhausted and reference is then clusters are added
         #this constitutes the case of added clusters
         print('this is the case where %s clusters were added' %( len(rcv_suspect_centeroidlist) ))
-        suspect_corners = get_culpritclusterlist(rcv_cluster_corners_list[:], rcv_suspect_centeroidlist[:], tempered_pc[:], sorted_centeroid_indexlist_rcv[:], threshold, mean_list[1], sigma_list[1],axis  )
+        suspect_corners, loc_count_center, loc_count_corner = get_culpritclusterlist(val_list, rcv_cluster_corners_list[:], rcv_suspect_centeroidlist[:], tempered_pc[:], sorted_centeroid_indexlist_rcv[:], threshold, mean_list[1], sigma_list[1],axis  )
+        if(is_pc_tampered == 1):
+            detection_count += 1
 
     elif((len(rcv_suspect_centeroidlist) != 0) and (len(tx_suspect_centeroidlist) != 0)):
         #this is the case where the clusters could have been moved or moved and added
@@ -395,8 +420,11 @@ def identify_tampered_clusters(rcv_suspect_centeroidlist, tx_suspect_centeroidli
         else:
             print('unkown case 1')
         
-        moved_corners = get_culpritclusterlist(rcv_cluster_corners_list[:], rcv_suspect_centeroidlist[:], tempered_pc[:], sorted_centeroid_indexlist_rcv[:], threshold, mean_list[1], sigma_list[1],axis  )
-        removed_corners = get_culpritclusterlist(tx_cluster_corners_list[:], tx_suspect_centeroidlist[:], tempered_pc[:], sorted_centeroid_indexlist_tx[:],threshold,  mean_list[0], sigma_list[0],axis  )
+        if(is_pc_tampered == 1):
+            detection_count += 1
+
+        moved_corners, loc_count_center, loc_count_corner = get_culpritclusterlist(val_list, rcv_cluster_corners_list[:], rcv_suspect_centeroidlist[:], tempered_pc[:], sorted_centeroid_indexlist_rcv[:], threshold, mean_list[1], sigma_list[1],axis  )
+        removed_corners, loc_count_center, loc_count_corner = get_culpritclusterlist(val_list, tx_cluster_corners_list[:], tx_suspect_centeroidlist[:], tempered_pc[:], sorted_centeroid_indexlist_tx[:],threshold,  mean_list[0], sigma_list[0],axis  )
 
         print('moveed corners shape', moved_corners.shape)
         print('deleted corners shape', removed_corners.shape)
@@ -406,6 +434,11 @@ def identify_tampered_clusters(rcv_suspect_centeroidlist, tx_suspect_centeroidli
         print('unkown case 2')
         pass
     
-    print('suspect corners shape', suspect_corners.shape)
-    return suspect_corners.reshape(-1,3)
+    print('suspect corners', suspect_corners)
+    if(len(suspect_corners) != 0):
+        print('suspect corners shape', suspect_corners.shape)
+        return suspect_corners.reshape(-1,3), detection_count, loc_count_center, loc_count_corner
+    else:
+        rospy.logerr("Couldnt find the suspect cluster corners")
+        return suspect_corners, detection_count, loc_count_center, loc_count_corner
 

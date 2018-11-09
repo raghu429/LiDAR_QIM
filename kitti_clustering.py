@@ -231,37 +231,42 @@ def kitti_cluster(pc_in):
   pcl_data = pcl.PointCloud()
   pcl_data.from_list(pc_in)
   colorless_cloud = pcl_data
+
+  clusters_msg = []
+  cluster_corners_msg = []
+
   print ('cloud data', np.size(colorless_cloud))
   
   # Get groups of indices for each cluster of points
   # Each group of points belongs to the same object
   # This is effectively a list of lists, with each list containing indices of the cloud
-  clusters = get_clusters(pcl_data, tolerance = 0.8, min_size = 20, max_size = 1500)
-  #clusters = get_clusters(pcl_data, tolerance = 0.8, min_size = 20, max_size = 35)
+  clusters = get_clusters(pcl_data, tolerance = 0.8, min_size = 50, max_size = 1500)
   print('clusters found', len(clusters))
 
-  #print('clusters', clusters)
+  if(len(clusters) != 0):
+    #clusters = get_clusters(pcl_data, tolerance = 0.8, min_size = 20, max_size = 35)
+    #print('clusters', clusters)
 
-  # Assign a unique color float for each point (x, y, z)
-  # Points with the same color belong to the same cluster
-  colored_points = get_colored_clusters(clusters, colorless_cloud)
-  print('colored points length', len(colored_points))
+    # Assign a unique color float for each point (x, y, z)
+    # Points with the same color belong to the same cluster
+    colored_points = get_colored_clusters(clusters, colorless_cloud)
+    print('colored points length', len(colored_points))
 
-  cluster_corners_msg = get_clustercorners(clusters, colorless_cloud)
-  cluster_corners_msg = cluster_corners_msg.reshape(-1, 8,3)
-  print('corners shape', cluster_corners_msg.shape)
+    cluster_corners_msg = get_clustercorners(clusters, colorless_cloud)
+    cluster_corners_msg = cluster_corners_msg.reshape(-1, 8,3)
+    print('corners shape', cluster_corners_msg.shape)
 
-  # Create a cloud with each cluster of points having the same color
-  clusters_cloud = pcl.PointCloud_PointXYZRGB()
-  clusters_cloud.from_list(colored_points)
+    # Create a cloud with each cluster of points having the same color
+    clusters_cloud = pcl.PointCloud_PointXYZRGB()
+    clusters_cloud.from_list(colored_points)
 
-  print('clusters cloud len', clusters_cloud)
+    print('clusters cloud len', clusters_cloud)
 
-  # Convert pcl data to ros messages
-  #objects_msg = pcl_to_ros(objects_cloud)
-  #table_msg = pcl_to_ros(table_cloud)
-  
-  clusters_msg = pcl_to_ros(clusters_cloud)
+    # Convert pcl data to ros messages
+    #objects_msg = pcl_to_ros(objects_cloud)
+    #table_msg = pcl_to_ros(table_cloud)
+    
+    clusters_msg = pcl_to_ros(clusters_cloud)
 
   return clusters_msg, cluster_corners_msg
 
