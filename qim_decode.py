@@ -57,43 +57,13 @@ count = 0
 print('length of pc', len(pc))
 
 def qim_decode(pc):
-    #we get one point in the point cloud.. need to figure out its quantization
-    # We need to build logic to recognize the code based on the values of the correspoinding points
-    # We can check if each coordinate is even or odd.. while encoding ... (note this logic would get thrown off
-    #if there are zeros in the quantized values)
-    # if all the values are even or odd then the code could be zero or 1
-    # so we can essentially recognize  000 or 111 (all odds and all evens)
-    # 011 or 100 ()
-    # 101 or 010 ()
-    # 001 or 110 ()
-    # We could reduce the encoding to four points to eliminate the symmetry issue
-    # we could start with 111, 011, 101, 110  can also be represented as 1,3,5,6    
-    
-    # if we start in the same pattern we should get the modulo eight on count and get the start 
-    #then confirm with the other logic
+    # We can check if each coordinate is even or odd.. while encoding 
     
     final_code = []
     cloud_row_read = []
     for j in range (pc.shape[0]):
         even_flag = []       
         even_flag = get_evenflag(pc[j])
-        # for i in range(3):
-        #     #print('index: value:', (i,j), pc[j][i])
-        #     #extract decimal number
-            
-        #     number_dec = int(pc[j][i] / resolution)
-        #     print('num dec', number_dec)
-        #     if (number_dec % 2 == 0): #even
-        #         even_flag.append(1)
-        #     else:
-        #         even_flag.append(0)
-
-        #     # number_dec = int(str(pc[j][i]).split('.')[1][:2])
-        #     # print('num dec', number_dec)
-        #     # if (number_dec % 2 == 0): #even
-        #     #     even_flag.append(1)
-        #     # else:
-        #     #     even_flag.append(0)
         final_code.append( get_decode_codebook(even_flag))
     cloud_row_read = ((pc - np.array([x[0],y[0],z[0]])) / resolution).astype(np.int32)
     # print('******cloud read', cloud_row_read.shape, cloud_row_read)
@@ -146,73 +116,43 @@ def qim_quantize_restricted(pc, count):
     cloud_to_compare = np.array(get_evenflag(pc))
     # print('cloud to compare', cloud_to_compare)
 
+    #reset code book
     code_book = [0,0,0]
     
-    # if(np.mod(count, 8) == 7 or np.mod(count, 8) == 0): # [111]  7 or 0
-    #     if(cloud_to_compare == [1,1,1] or cloud_to_compare == [0,0,0]):
-    #         print('condition exisits [1,1,1]')
-    #         code_book = [1,1,1]
-    #     else:
-    #         cloud_row = cloud_row + 1    
-    #         print('condition [111]', (count), cloud_row)
-    #         code_book = [1,1,1]   
-    # elif(np.mod(count, 8) == 3 or np.mod(count, 8) == 4): # [011] 4 or 3
-    #     if(cloud_to_compare == [0,1,1] or cloud_to_compare == [1,0,0]):
-    #         print('condition exisits [0,1,1]')
-    #         code_book = [0,1,1]
-    #     else:
-    #         cloud_row[1] = cloud_row[1] + 1
-    #         cloud_row[2] = cloud_row[2] + 1        
-    #         code_book = [0,1,1]
-    #         print('condition [011]', (count), cloud_row)
-    # elif(np.mod(count, 8) == 5 or np.mod(count, 8) == 2): # [101] 5 or 2
-    #     if(cloud_to_compare == [1,0,1] or cloud_to_compare == [0,1,0]):
-    #         print('condition exisits [1,0,1]')
-    #         code_book = [1,0,1]code_book = [1,1,1]
-    #     else:
-    #         cloud_row[0] = cloud_row[0] + 1
-    #         cloud_row[2] = cloud_row[2] + 1
-    #         code_book = [1,0,1]
-    #         print('condition [101]', (count), cloud_row)
-    # elif(np.mod(count, 8) == 6 or np.mod(count, 8) == 1): # [110] 6 or 1
-    #     if(cloud_to_compare == [1,1,0] or cloud_to_compare == [0,0,1]):
-    #         print('condition exisits [1,1,0]')
-    #         code_book = [1,1,0]
-    #     else:
-    #         cloud_row[0] = cloud_row[0] + 1
-    #         cloud_row[1] = cloud_row[1] + 1
-    #         code_book = [1,1,0]
-    #         print('condition [110]', (count), cloud_row)
-
-    encode_cb_7 = np.array([1,1,1])
-    encode_cb_6 = np.array([1,1,0])
-    encode_cb_5 = np.array([1,0,1])
+    encode_cb_0 = np.array([0,0,0])
+    encode_cb_1 = np.array([0,0,1])
+    encode_cb_2 = np.array([0,1,0])
     encode_cb_3 = np.array([0,1,1])
 
-    
+    encode_cb_4 = np.array([1,0,0])
+    encode_cb_5 = np.array([1,0,1])
+    encode_cb_6 = np.array([1,1,0])
+    encode_cb_7 = np.array([1,1,1])
+
     print('cloud compare', cloud_to_compare)
-    if(np.mod(count, 4) == 0): # 0,4,8 ...
-        # print('encodecb_7', encode_cb_7)
-        if( (cloud_to_compare == encode_cb_7).all()):
-            print('**********condition exisits [1,1,1]')
+
+    if(np.mod(count, 8) == 0): # 0,8, 16...
+        # print('encode_0', encode_cb_0)
+        if( (cloud_to_compare == encode_cb_0).all()):
+            print('**********condition exisits [0,0,0]')
         else:
-            changed_indices = np.where(cloud_to_compare != encode_cb_7)
+            changed_indices = np.where(cloud_to_compare != encode_cb_0)
             # print('changed indices',changed_indices )
             for i in range(len(changed_indices[0])):
-                if(encode_cb_7[changed_indices[0][i]] == 1):
+                if(encode_cb_0[changed_indices[0][i]] == 1):
                     cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
                 else:
                     cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
 
-            # print('condition [111]', (count), cloud_row)
-        code_book = encode_cb_7 #[1,1,1]   
+            # print('condition [000]', (count), cloud_row)
+        code_book = encode_cb_0 #[0,0,0]   
     
-    elif(np.mod(count, 4) == 1): # 1,5,9 ...
-        # print('encodecb_6', encode_cb_6)
-        if( (cloud_to_compare == encode_cb_6).all()):
-            print('**********condition exisits [1,1,0]')
+    elif(np.mod(count, 8) == 1): # 1,9, ...
+        # print('encodecb_1', encode_cb_1)
+        if( (cloud_to_compare == encode_cb_1).all()):
+            print('**********condition exisits [0,0,1]')
         else:
-            changed_indices = np.where(cloud_to_compare != encode_cb_6)
+            changed_indices = np.where(cloud_to_compare != encode_cb_1)
             # print('changed indices**', changed_indices)
             for i in range(len(changed_indices[0])):
                 if(encode_cb_6[changed_indices[0][i]] == 1):
@@ -220,13 +160,13 @@ def qim_quantize_restricted(pc, count):
                 else:
                     cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
 
-            # print('condition [110]', (count), cloud_row)
-        code_book = encode_cb_6 #[1,1,0]
+            # print('condition [001]', (count), cloud_row)
+        code_book = encode_cb_1 #[0,0,1]
 
-    elif(np.mod(count, 4) == 2): # 2,6,10 ...
-        # print('encodecb_5', encode_cb_5)
-        if( (cloud_to_compare == encode_cb_5).all()):
-            print('**********condition exisits [1,0,1]')
+    elif(np.mod(count, 8) == 2): # 2,10 ...
+        # print('encodecb_2', encode_cb_2)
+        if( (cloud_to_compare == encode_cb_2).all()):
+            print('**********condition exisits [0,1,0]')
         else:
             changed_indices = np.where(cloud_to_compare != encode_cb_5)
             print('change indices & length', changed_indices, len(changed_indices[0]))
@@ -237,12 +177,12 @@ def qim_quantize_restricted(pc, count):
                     cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
 
             # print('condition [101]', (count), cloud_row)
-        code_book = encode_cb_5 #[1,0,1]
+        code_book = encode_cb_2 #[1,0,1]
 
-    elif(np.mod(count, 4) == 3): # 3,7,11 ...
+    elif(np.mod(count, 8) == 3): # 3,11 ...
         # print('encodecb_3', encode_cb_3)
         if( (cloud_to_compare == encode_cb_3).all()):
-            print('**********condition exisits [1,1,0]')
+            print('**********condition exisits [0,1,1]')
         else:
             changed_indices = np.where(cloud_to_compare != encode_cb_3)
             for i in range(len(changed_indices[0])):
@@ -253,6 +193,67 @@ def qim_quantize_restricted(pc, count):
 
             # print('condition [011]', (count), cloud_row)
         code_book = encode_cb_3 #[0,1,1]
+    
+    elif(np.mod(count, 8) == 4): # 4,12 ...
+        # print('encodecb_4', encode_cb_4)
+        if( (cloud_to_compare == encode_cb_4).all()):
+            print('**********condition exisits [1,0,0]')
+        else:
+            changed_indices = np.where(cloud_to_compare != encode_cb_4)
+            for i in range(len(changed_indices[0])):
+                if(encode_cb_3[changed_indices[0][i]] == 1):
+                    cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
+                else:
+                    cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
+
+            # print('condition [100]', (count), cloud_row)
+        code_book = encode_cb_4 #[1,0,0]
+    
+    elif(np.mod(count, 8) == 5): # 5,13 ...
+        # print('encodecb_5', encode_cb_5)
+        if( (cloud_to_compare == encode_cb_5).all()):
+            print('**********condition exisits [1,0,1]')
+        else:
+            changed_indices = np.where(cloud_to_compare != encode_cb_5)
+            for i in range(len(changed_indices[0])):
+                if(encode_cb_3[changed_indices[0][i]] == 1):
+                    cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
+                else:
+                    cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
+
+            # print('condition [101]', (count), cloud_row)
+        code_book = encode_cb_5 #[1,0,1]
+    
+    elif(np.mod(count, 8) == 6): # 6,14 ...
+        # print('encodecb_6', encode_cb_6)
+        if( (cloud_to_compare == encode_cb_4).all()):
+            print('**********condition exisits [1,1,0]')
+        else:
+            changed_indices = np.where(cloud_to_compare != encode_cb_6)
+            for i in range(len(changed_indices[0])):
+                if(encode_cb_3[changed_indices[0][i]] == 1):
+                    cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
+                else:
+                    cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
+
+            # print('condition [110]', (count), cloud_row)
+        code_book = encode_cb_6 #[1,1,0]
+    
+    elif(np.mod(count, 8) == 7): # 7,15 ...
+        # print('encodecb_7', encode_cb_7)
+        if( (cloud_to_compare == encode_cb_7).all()):
+            print('**********condition exisits [1,1,1]')
+        else:
+            changed_indices = np.where(cloud_to_compare != encode_cb_7)
+            for i in range(len(changed_indices[0])):
+                if(encode_cb_3[changed_indices[0][i]] == 1):
+                    cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
+                else:
+                    cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
+
+            # print('condition [111]', (count), cloud_row)
+        code_book = encode_cb_7 #[1,1,1]
+    
 
     #get the updated numpyh representation, updated point cloud and the codebook from data
     cloud_row_numpyrep = cloud_row
@@ -269,103 +270,62 @@ def compare_codebooks(encode_cb, decode_cb):
             print(i)
         
 
-# def qim_quantize(pc, count):
-#     cloud_row_clean = ((pc - np.array([x[0],y[0],z[0]])) / resolution).astype(np.int32)
-#     print('cloud row vlues', cloud_row_clean)
-#     cloud_row =  cloud_row_clean
-    
-#     code_book = [0,0,0]
-    
-#     if(np.mod(count, 8) == 0):    
-#         print('cloud row modified', cloud_row)
-#         code_book = [0,0,0]   
-#     elif(np.mod(count, 8) == 1):
-#         cloud_row[2] = cloud_row_clean[2] + 1
-#         code_book = [0,0,1]
-#         print('cloud row modified', cloud_row)
-#     elif(np.mod(count, 8) == 2):
-#         cloud_row[1] = cloud_row_clean[1] + 1
-#         code_book = [0,1,0]
-#         print('cloud row modified', cloud_row)
-#     elif(np.mod(count, 8) == 3):
-#         cloud_row[1] = cloud_row_clean[1] + 1
-#         cloud_row[2] = cloud_row_clean[2] + 1
-#         code_book = [0,1,1]
-#         print('cloud row modified', cloud_row)
-#     elif(np.mod(count, 8) == 4):
-#         cloud_row[0] = cloud_row_clean[0] + 1
-#         code_book = [1,0,0]
-#         print('cloud row modified', cloud_row)
-#     elif(np.mod(count, 8) == 5):
-#         cloud_row[0] = cloud_row_clean[0] + 1
-#         cloud_row[2] = cloud_row_clean[2] + 1
-#         code_book = [1,0,1]
-#         print('cloud row modified', cloud_row)
-#     elif(np.mod(count, 8) == 6):
-#         cloud_row[0] = cloud_row_clean[0] + 1
-#         cloud_row[1] = cloud_row_clean[1] + 1
-#         code_book = [1,1,0]
-#         print('cloud row modified', cloud_row)
-#     elif(np.mod(count, 8) == 7):
-#         cloud_row = cloud_row + 1
-#         code_book = [1,1,1]
-#         print('cloud row modified', cloud_row)
-#     return cloud_row, code_book
-    
-pc_row_count = 0
 
-#steps
-quant_encoded = []
-cbook = []
-cbook_decoded = []
-pc_values_decoded = []
+if __name__ == '__main__':
+
+    pc_row_count = 0
+
+    #steps
+    quant_encoded = []
+    cbook = []
+    cbook_decoded = []
+    pc_values_decoded = []
+
+    # 1. encode the point cloud and extract the codebook
+
+    print('poitn cloud', pc_odd)
+    c = ((pc_odd - np.array([x[0],y[0],z[0]])) / resolution).astype(np.int32)
+    print('quantized input pc numpy representation', c)
+
+    quantized_pc  = c*resolution + np.array([x[0],y[0],z[0]])
+    print('quantized input pc values', quantized_pc) 
 
 
-# 1. encode the point cloud and extract the codebook
+    while pc_row_count < len(pc):
+        quant_output, cbook_local, pc_values, cbook_from_pcvalues = qim_quantize_restricted(pc_odd[pc_row_count, :], pc_row_count)
+        quant_encoded.append(quant_output)
+        cbook.append(cbook_local)
+        pc_values_decoded.append(pc_values)
+        cbook_decoded.append(cbook_from_pcvalues)
 
-print('poitn cloud', pc_odd)
-c = ((pc_odd - np.array([x[0],y[0],z[0]])) / resolution).astype(np.int32)
-print('quantized input pc numpy representation', c)
+        pc_row_count += 1
+        if(pc_row_count > len(pc_odd)):
+            print('something wrong.. exceeded length of pc')
 
-quantized_pc  = c*resolution + np.array([x[0],y[0],z[0]])
-print('quantized input pc values', quantized_pc) 
+    encoded_pc = np.array([quant_encoded]).reshape(-1,3)
+    print('encoded pc numpy representation', encoded_pc)
 
+    # 2. Get the PC from the quatized values 
+    encoded_quantized_pc  = encoded_pc*resolution + np.array([x[0],y[0],z[0]])
+    print('encoded pc values', encoded_quantized_pc) 
+    # d = ((pc_odd - np.array([x[0],y[0],z[0]])) / resolution).astype(np.int32)
 
-while pc_row_count < len(pc):
-    quant_output, cbook_local, pc_values, cbook_from_pcvalues = qim_quantize_restricted(pc_odd[pc_row_count, :], pc_row_count)
-    quant_encoded.append(quant_output)
-    cbook.append(cbook_local)
-    pc_values_decoded.append(pc_values)
-    cbook_decoded.append(cbook_from_pcvalues)
+    #3. decoded pc values and code book
+    print('decoded pc values',np.array([pc_values_decoded]).reshape(-1,3))
+    print('decoded code book',np.array([cbook_decoded]).reshape(-1,3))
 
-    pc_row_count += 1
-    if(pc_row_count > len(pc_odd)):
-        print('something wrong.. exceeded length of pc')
+    # Decode the point cloud and get the code book
+    e, f = qim_decode(encoded_quantized_pc)
+    print('decoded pc numpy representation', np.array([f]).reshape(-1,3))
 
-encoded_pc = np.array([quant_encoded]).reshape(-1,3)
-print('encoded pc numpy representation', encoded_pc)
+    # ##c = a[:][logic_bound2]
+    # print('c', c.shape, c)
+    # print('d', c.shape, d)
+    decoded_codebook = np.array([e]).reshape(-1,3)
+    encoded_codebook = np.array([cbook]).reshape(-1,3)
 
-# 2. Get the PC from the quatized values 
-encoded_quantized_pc  = encoded_pc*resolution + np.array([x[0],y[0],z[0]])
-print('encoded pc values', encoded_quantized_pc) 
-# d = ((pc_odd - np.array([x[0],y[0],z[0]])) / resolution).astype(np.int32)
+    # print('decoded_codebook', decoded_codebook)
+    print('encoded_codebook', encoded_codebook)
 
-#3. decoded pc values and code book
-print('decoded pc values',np.array([pc_values_decoded]).reshape(-1,3))
-print('decoded code book',np.array([cbook_decoded]).reshape(-1,3))
-
-# Decode the point cloud and get the code book
-e, f = qim_decode(encoded_quantized_pc)
-print('decoded pc numpy representation', np.array([f]).reshape(-1,3))
-
-# ##c = a[:][logic_bound2]
-# print('c', c.shape, c)
-# print('d', c.shape, d)
-decoded_codebook = np.array([e]).reshape(-1,3)
-encoded_codebook = np.array([cbook]).reshape(-1,3)
-
-# print('decoded_codebook', decoded_codebook)
-print('encoded_codebook', encoded_codebook)
-
-compare_codebooks(encoded_codebook, decoded_codebook)
+    compare_codebooks(encoded_codebook, decoded_codebook)
 
