@@ -53,54 +53,101 @@ pc_odd = np.array(  [[1.13, 1.23, 1.33],
 [1.40, 1.50, 1.60],
 [1.70,1.80, 1.90]]).astype(float)
 
+
+
+pc_test = np.array([[52.249, 12.482,  2.026],
+       [51.769, 12.453,  2.01 ],
+       [51.275, 12.505,  1.994],
+       [50.792, 12.556,  1.978],
+       [50.31 , 12.604,  1.963],
+       [49.84 , 12.653,  1.948],
+       [49.363, 12.697,  1.933]]).astype(np.float64)
+    #    [48.903, 12.742,  1.918],
+    #    [48.459, 12.708,  1.903],
+    #    [48.042, 12.759,  1.89 ],
+    #    [47.593, 12.8  ,  1.876],
+    #    [47.153, 12.841,  1.862],
+    #    [46.735, 12.884,  1.848],
+    #    [46.288, 12.918,  1.834],
+    #    [46.201, 13.05 ,  1.833],
+    #    [46.235, 13.138,  1.834],
+    #    [45.114, 12.972,  1.796],
+    #    [44.86 , 13.051,  1.789],
+    #    [44.632, 13.137,  1.782],
+    #    [44.38 , 13.215,  1.775],
+    #    [44.197, 13.311,  1.77 ],
+    #    [44.011, 13.331,  1.764],
+    #    [43.851, 13.433,  1.76 ],
+    #    [43.835, 13.579,  1.761],
+    #    [43.815, 13.723,  1.762],
+    #    [43.823, 13.877,  1.764],
+    #    [43.844, 14.036,  1.766],
+    #    [43.855, 14.191,  1.768],
+    #    [43.884, 14.277,  1.77 ],
+    #    [43.894, 14.433,  1.772],
+    #    [43.922, 14.595,  1.774],
+    #    [43.943, 14.755,  1.777],
+    #    [43.977, 14.921,  1.779],
+    #    [44.023, 15.091,  1.783],
+    #    [56.316, 19.511,  2.224],
+    #    [55.898, 19.563,  2.212],
+    #    [55.498, 19.52 ,  2.198],
+    #    [55.078, 19.567,  2.186],
+    #    [54.672, 19.616,  2.173],
+    #    [54.263, 19.662,  2.161]]).astype(float)
+
 x = (0,1.4)
 y = (0,1.2)
 z = (0,1.5)
 
-resolution = 0.05
+resolution = 0.025
 
 
 def qim_decode(pc):
     # We can check if each coordinate is even or odd.. while encoding 
     final_code = []
     cloud_row_read = []
-    
-    for j in range (pc.shape[0]):
-        row_even_flags = []       
-        row_even_flags = get_evenflag(pc[j])
-        final_code.append(row_even_flags)
-
     cloud_row_read = getQuantizedValues_from_pointCloud(pc, resolution, x,y,z)
-    # print('******cloud read', cloud_row_read.shape, cloud_row_read)
+
+    for j in range (cloud_row_read.shape[0]):
+        row_odd_flags = []       
+        row_odd_flags = get_oddflag(cloud_row_read[j])
+        final_code.append(row_odd_flags)
+
+    
+    # print('******decoded quantized values', cloud_row_read.shape, cloud_row_read)
     
     return final_code, cloud_row_read
 
 def getPointCloud_from_quantizedValues(pc_encoded, resolution_in, x_in, y_in, z_in):
-    return(pc_encoded*resolution_in + np.array([x_in[0],y_in[0],z_in[0]]))
-
+    pc_value = (pc_encoded *resolution_in) + np.array([x_in[0],y_in[0],z_in[0]])
+    return(pc_value)
 
 def getQuantizedValues_from_pointCloud(pc, resolution_in, x_in,y_in,z_in):
-    return(((pc - np.array([x_in[0],y_in[0],z_in[0]])) / resolution_in).astype(np.int32))
+    pc_quant_value = np.around((pc - np.array([x_in[0],y_in[0],z_in[0]])) / resolution_in).astype(np.int32)
+    # pc_quant_value = ((pc - np.array([x_in[0],y_in[0],z_in[0]]))/resolution_in).astype(np.int32)
+    return(pc_quant_value)
 
 
 #checks if the quantized value is even or odd
-def get_evenflag(pc_row):
+def get_oddflag(pc_row):
     final_code = []
-    e_flag = [] 
+    o_flag = [] 
     # print('pc input', pc_row)
     for i in range(3):
             #print('index: value:', (i,j), pc[j][i])
             #extract decimal number
-            number_dec = int(pc_row[i] / resolution)
+            # number_dec = int(pc_row[i] / resolution)
+            number_dec = int(pc_row[i])
             # print('num dec', number_dec)
             if (number_dec % 2 == 0): #even
-                e_flag.append(1)
+                o_flag.append(0)
             else:
-                e_flag.append(0)
+                o_flag.append(1) #odd 
 
     # final_code.append( get_decode_codebook(e_flag) )
     # print('even flag', e_flag)
-    return e_flag
+    return o_flag
     
 
 def qim_quantize_restricted(pc_in):
@@ -131,10 +178,11 @@ def qim_quantize_restricted(pc_in):
         quantized_values_row = getQuantizedValues_from_pointCloud(pc, resolution, x,y,z)
         # print('clean', cloud_row_clean)
         cloud_row =  quantized_values_row
+        # print('input cloud', cloud_row)
         
 
-        cloud_to_compare = np.array(get_evenflag(pc))
-        # print('cloud to compare', cloud_to_compare)
+        cloud_to_compare = np.array(get_oddflag(cloud_row))
+        # print('input oddflag', cloud_to_compare)
 
         #reset code book
         code_book = [0,0,0]
@@ -146,7 +194,8 @@ def qim_quantize_restricted(pc_in):
                 print('**********condition exisits [0,0,0]')
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_0)
-                # print('changed indices',changed_indices )
+                # print('0 change indices & length', changed_indices, len(changed_indices[0]))
+                print('\n')
                 for i in range(len(changed_indices[0])):
                     if(encode_cb_0[changed_indices[0][i]] == 1):
                         cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
@@ -162,9 +211,9 @@ def qim_quantize_restricted(pc_in):
                 print('**********condition exisits [0,0,1]')
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_1)
-                # print('changed indices**', changed_indices)
+                # print('1 changed indices**', changed_indices)
                 for i in range(len(changed_indices[0])):
-                    if(encode_cb_6[changed_indices[0][i]] == 1):
+                    if(encode_cb_1[changed_indices[0][i]] == 1):
                         cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
                     else:
                         cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
@@ -178,9 +227,9 @@ def qim_quantize_restricted(pc_in):
                 print('**********condition exisits [0,1,0]')
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_2)
-                print('change indices & length', changed_indices, len(changed_indices[0]))
+                # print('2 change indices & length', changed_indices, len(changed_indices[0]))
                 for i in range(len(changed_indices[0])):
-                    if(encode_cb_5[changed_indices[0][i]] == 1):
+                    if(encode_cb_2[changed_indices[0][i]] == 1):
                         cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
                     else:
                         cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
@@ -194,6 +243,7 @@ def qim_quantize_restricted(pc_in):
                 print('**********condition exisits [0,1,1]')
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_3)
+                # print('3 change indices & length', changed_indices, len(changed_indices[0]))
                 for i in range(len(changed_indices[0])):
                     if(encode_cb_3[changed_indices[0][i]] == 1):
                         cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
@@ -209,8 +259,9 @@ def qim_quantize_restricted(pc_in):
                 print('**********condition exisits [1,0,0]')
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_4)
+                # print('4 change indices & length', changed_indices, len(changed_indices[0]))
                 for i in range(len(changed_indices[0])):
-                    if(encode_cb_3[changed_indices[0][i]] == 1):
+                    if(encode_cb_4[changed_indices[0][i]] == 1):
                         cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
                     else:
                         cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
@@ -225,7 +276,7 @@ def qim_quantize_restricted(pc_in):
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_5)
                 for i in range(len(changed_indices[0])):
-                    if(encode_cb_3[changed_indices[0][i]] == 1):
+                    if(encode_cb_5[changed_indices[0][i]] == 1):
                         cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
                     else:
                         cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
@@ -235,12 +286,13 @@ def qim_quantize_restricted(pc_in):
         
         elif(np.mod(pc_row_count, 8) == 6): # 6,14 ...
             # print('encodecb_6', encode_cb_6)
-            if( (cloud_to_compare == encode_cb_4).all()):
+            if( (cloud_to_compare == encode_cb_6).all()):
                 print('**********condition exisits [1,1,0]')
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_6)
+                # print('6 change indices & length', changed_indices, len(changed_indices[0]))
                 for i in range(len(changed_indices[0])):
-                    if(encode_cb_3[changed_indices[0][i]] == 1):
+                    if(encode_cb_6[changed_indices[0][i]] == 1):
                         cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
                     else:
                         cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
@@ -254,8 +306,9 @@ def qim_quantize_restricted(pc_in):
                 print('**********condition exisits [1,1,1]')
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_7)
+                # print('7 change indices & length', changed_indices, len(changed_indices[0]))
                 for i in range(len(changed_indices[0])):
-                    if(encode_cb_3[changed_indices[0][i]] == 1):
+                    if(encode_cb_7[changed_indices[0][i]] == 1):
                         cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
                     else:
                         cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
@@ -268,7 +321,7 @@ def qim_quantize_restricted(pc_in):
         cbook.append(code_book)
         # print('row# and code book', pc_row_count, code_book)
 
-        pc_row_count += 1
+        pc_row_count = pc_row_count + 1
         if(pc_row_count > len(pc_in)):
             print('something wrong.. exceeded length of pc')
         
@@ -278,16 +331,32 @@ def qim_quantize_restricted(pc_in):
         #get the updated numpyh representation, updated point cloud and the codebook from data
         # cloud_row_numpyrep = cloud_row
         # cloud_row_pcvalues = cloud_row_numpyrep*resolution + np.array([x[0],y[0],z[0]])
-        # codebook_decoded = np.array(get_evenflag(cloud_row_pcvalues))
+        # codebook_decoded = np.array(get_oddflag(cloud_row_pcvalues))
         # codebook_basedoncount = code_book
 
     return quant_encoded, cbook
 
 
 def compare_codebooks(encode_cb, decode_cb):
+    print('encode cb length', encode_cb.shape[0])
+    print('decode cb length', decode_cb.shape[0])
+    
+
+    if(encode_cb.shape[0] != decode_cb.shape[0]):
+        print('***** size mismatch')
+
+    point_match_count = 0
+    mismatch_count = 0
     for i in range(encode_cb.shape[0]):
         if((encode_cb[i] == decode_cb[i]).all()):
+            point_match_count += 1
+        else:
+            mismatch_count +=1
             print(i)
+
+    print ('match count', point_match_count)
+    print('mis-match count', mismatch_count)
+
         
 
 
@@ -296,10 +365,10 @@ if __name__ == '__main__':
 
     # 1. encode the point cloud and extract the codebook
 
-    pc_input = pc_even
+    pc_input = pc_test
     
-    print('poitn cloud', pc_input)
-    c = ((pc_input - np.array([x[0],y[0],z[0]])) / resolution).astype(np.int32)
+    print('poitn cloud shape and values', pc_input.shape, pc_input)
+    c = np.around(((pc_input - np.array([x[0],y[0],z[0]])) / resolution)).astype(np.int32)
     print('quantized input pc numpy representation', c)
 
     quantized_pc  = c*resolution + np.array([x[0],y[0],z[0]])

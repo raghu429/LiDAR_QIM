@@ -188,8 +188,8 @@ def do_voxel_grid_filter(point_cloud, LEAF_SIZE = 0.01):
   return voxel_filter.filter()
 
 def measure_distortion(pointCloud_base, pointCloud_modified):
-    #print('base shape:', pointCloud_base.shape)
-    #print('modified shape:', pointCloud_modified.shape)
+    print('base shape:', pointCloud_base.shape)
+    print('modified shape:', pointCloud_modified.shape)
     if(pointCloud_base.shape != pointCloud_modified.shape):
         print('point cloud shapes do not match')
     
