@@ -15,6 +15,7 @@ from helper_functions import *
 from kitti_clustering import *
 from tamper_pc import *
 from QIM_helper import *
+from QIM_compare_helper import *
 
 
 # Global Initialization
@@ -153,7 +154,11 @@ if __name__ == '__main__':
       # print('encoded_codebook', encoded_codebook)
       
       compare_codebooks(encoded_codebook, decoded_codebook)
+      
+      detection_threshold =  0.9
+      blockSize = 8
 
+      calculate_diff(encoded_codebook,decoded_codebook, blockSize, detection_threshold)
 
     else:
       continue 
