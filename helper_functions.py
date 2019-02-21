@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys
 import os
+import time
 import rospy
 import numpy as np
 import cv2
@@ -46,7 +47,7 @@ def get_min_max_ofpc(pc):
     y_max = np.max(pc[:,1]).astype(np.float32)
     z_max = np.max(pc[:,2]).astype(np.float32)
     
-    print('min_x: %s, min_y: %s, min_z: %s, max_x: %s, max_y: %s, max_z: %s' %(x_min,y_min,z_min, x_max,y_max,z_max))
+    # print('min_x: %s, min_y: %s, min_z: %s, max_x: %s, max_y: %s, max_z: %s' %(x_min,y_min,z_min, x_max,y_max,z_max))
     return x_min,y_min,z_min, x_max,y_max,z_max
 
 def dist(x,y):   
@@ -59,7 +60,7 @@ def get_pc_logicaldivision(pc, x=(0, 90), y=(-50, 50), z=(-4.5, 5.5)):
     get_min_max_ofpc(pc)
 
     #note: the original point cloud has four columns
-    print('pc shape before any modificatins', pc.shape)
+    # print('pc shape before any modificatins', pc.shape)
     #print('pc before modification first 25 elements', pc[:25,:])
 
     #we start the filtering process to filter out the point cloud that we dont need
