@@ -4,16 +4,146 @@ import numpy as np
 #import os
 #import ntpath
 #from helper_functions import *
+import seaborn as sns
+import matplotlib.pyplot as plt
 
+
+
+
+#****************************************************************************************
+# box plot test
+sns.set(style="whitegrid")
+tips = sns.load_dataset("tips")
+
+print('tips shape', tips.shape)
+print('tips', tips)
+plt.figure()
+ax = sns.boxplot(x=tips["total_bill"])
+plt.show()
+
+# fig, ax = plt.subplots()
+# # y = [add1*100, add2*100, add3*100, add4*100]
+# y = [Del1*100, Del2*100, Del3*100, Del4*100]
+# # y = [clean1*100, clean2*100, clean3*100, clean4*100]
+
+# pos = np.array(range(len(y)))+ 1
+# bp = ax.boxplot(y, sym='k+', positions=pos, labels = ['a','b','c', 'd'])
+
+
+# ax.set_xlabel('Noise Variance')
+# ax.set_ylabel('Bit Error Rate %')
+
+# plt.setp(bp['whiskers'], color='k', linestyle='-')
+# plt.setp(bp['fliers'], markersize=3.0)
+# plt.show()
+
+# *****************************************************************************************
+
+
+#*****************************************************************************************
+#person corr coeff
+
+def generate_correlation_map(x, y):
+    """Correlate each n with each m.
+
+    Parameters
+    ----------
+    x : np.array
+      Shape N X T.
+
+    y : np.array
+      Shape M X T.
+
+    Returns
+    -------
+    np.array
+      N X M array in which each element is a correlation coefficient.
+
+    """
+    mu_x = x.mean(1)
+    mu_y = y.mean(1)
+    n = x.shape[1]
+    if n != y.shape[1]:
+        raise ValueError('x and y must ' +
+                         'have the same number of timepoints.')
+    s_x = x.std(1, ddof=n - 1)
+    s_y = y.std(1, ddof=n - 1)
+    cov = np.dot(x,
+                 y.T) - n * np.dot(mu_x[:, np.newaxis],
+                                  mu_y[np.newaxis, :])
+    return cov / np.dot(s_x[:, np.newaxis], s_y[np.newaxis, :])
+
+from scipy.stats import pearsonr
+
+def test_generate_correlation_map():
+    # x = np.random.rand(10, 10)
+    # y = np.random.rand(20, 10)
+    
+    x = np.random.randint(2, size=12)
+    y = np.random.randint(2, size=12)
+
+    x = x.reshape(-1,3)
+    y = y.reshape(-1,3)
+
+
+    print('x', x.shape, x)
+    print('y', y.shape, y)
+
+    x = x.reshape(-1,1)
+    y = y.reshape(-1,1)
+
+    x = [1,4,6]
+    y = [1,2,3]  
+
+    x = np.array(x)
+    y = np.array(y)
+
+    print('x', x.shape, x)
+    print('y', y.shape, y)
+
+
+
+    pear_val = pearsonr(x,y)
+
+    print('pear val', pear_val)
+    
+    x = x.reshape(-1,1)
+    y = y.reshape(-1,1)
+
+    print('x', x.shape, x)
+    print('y', y.shape, y)
+
+
+
+    pear_val = pearsonr(x,y)
+
+    print('pear val', pear_val)
+    
+    
+    # desired = np.empty((10, 20))
+    # for n in range(x.shape[0]):
+    #     for m in range(y.shape[0]):
+    #         desired[n, m] = pearsonr(x[n, :], y[m, :])[0]
+    
+    # actual = generate_correlation_map(x, y)
+    # print('actua shape', actual.shape)
+    # print('desired shape', desired.shape)
+    # np.testing.assert_array_almost_equal(actual, desired)
+
+test_generate_correlation_map()
+
+
+
+# #*****************************************************************************************
 
 # #***********************************************************************************
  #logical bounds tests
 
 a = np.arange(27)
 a = a.reshape(-1,3)
-print('a', a.shape, a)
+# print('a', a.shape, a)
 c = a*0.05
-print('c', c)
+# print('c', c)
 #
 ##copy a into some other variable to save it
 #aa = a.astype(float)

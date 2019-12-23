@@ -5,7 +5,7 @@ import time
 import rospy
 import numpy as np
 import cv2
-import pcl
+# import pcl
 import glob
 import math
 import std_msgs.msg

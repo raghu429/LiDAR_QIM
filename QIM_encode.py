@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
 import numpy as np
-import pcl
+# import pcl
 import rospy
 import sensor_msgs.point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2, PointField
@@ -32,15 +32,23 @@ clean_pc_dir_path = os.path.join("./QIM_data", "camfiltered")
 if not os.path.exists(clean_pc_dir_path):
   os.mkdir(clean_pc_dir_path)
 
-x = (0,1.4)
-y = (0,1.2)
-z = (0,1.5)
+# x = (0,1.4)
+# y = (0,1.2)
+# z = (0,1.5)
 
-resolution_delta = 0.05
-resolution_halfdelta = resolution_delta/2.0
+# # resolution_delta = 0.1
+# # resolution_halfdelta = resolution_delta/2.0
+
+# # numbits = 3
+
+# groundplane_level = -2.5
 
 
-groundplane_level = -1.7
+#************************************************
+#************************************************
+# All globals are initialized in QIM_helper.py
+
+
 
 if __name__ == '__main__':
 
@@ -53,8 +61,8 @@ if __name__ == '__main__':
   data_directory = './QIM_data/test_data/'
 
   for filename in os.listdir(data_directory):
-    # if filename.endswith(".bin")  and filename.startswith("000014"):
-    if filename.endswith(".bin"):
+    if filename.endswith(".bin")  and filename.startswith("000071"):
+    # if filename.endswith(".bin"):
       working_file_name = ntpath.basename(os.path.join(data_directory, filename)).split('.')[0]
       print('file currently working on %s'%(working_file_name) )
 
@@ -78,14 +86,21 @@ if __name__ == '__main__':
       #****************************************************************************************************************************
                                                   # Encode the point cloud
       #****************************************************************************************************************************
-      c = np.around(((np.copy(pc_input) - np.array([x[0],y[0],z[0]])) / resolution_delta)).astype(np.int32)
+      # c = np.around(((np.copy(pc_input) - np.array([x[0],y[0],z[0]])) / resolution_delta)).astype(np.int32)
       # print('quantized input pc numpy representation', c)
 
       # quantized_pc  = c*resolution + np.array([x[0],y[0],z[0]])
       # print('quantized input pc values', quantized_pc) 
 
       # Encode the point cloud
-      voxel_delta, voxel_halfdelta, encoded_CB = qim_quantize_restricted_threebits( np.copy(pc_input))
+      if(numbits == 3):
+        voxel_delta, voxel_halfdelta = qim_quantize_restricted_threebits_new( np.copy(pc_input))
+      elif(numbits == 2):
+        voxel_delta, voxel_halfdelta = qim_quantize_restricted_twobits( np.copy(pc_input))
+      elif(numbits == 1):
+        voxel_delta, voxel_halfdelta = qim_quantize_restricted_onebit( np.copy(pc_input))
+      else:
+        print('ERROR: INVALID noof bits')
 
       voxel_halfdelta_npy = np.array([voxel_halfdelta]).reshape(-1,3)
       print('quant encoded shape', voxel_halfdelta_npy.shape)

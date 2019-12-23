@@ -1,0 +1,11 @@
+#ignore all the binary files
+*.npy
+#ignore the following folders
+/bbox_test
+/data
+/QIM_data
+/QIM_data_ACM
+/results
+#ignore the image files
+*.png
+

@@ -220,12 +220,49 @@ decoded_code = np.array([   [0,0,0],
 # [0, 1, 0]])
 
 
+# x = (0,1.4)
+# y = (0,1.2)
+# z = (0,1.5)
+
+
+
+# resolution_delta = 0.1
+# resolution_halfdelta = resolution_delta/2.0
+
+# numbits = 3
+
+
+
+# consider resolution in meterts hence we divide them by 100
+
+
+#GLOBALS to be changed
+groundplane_level = -2.5
+
 x = (0,1.4)
 y = (0,1.2)
 z = (0,1.5)
 
-resolution_delta = 0.05
+mu = 0.0
+label_tomove_index = 0
+
+# resolution_list_cm = [5, 10, 20, 30, 35, 40]
+
+
+resolution_delta = 3.0/100.0 
 resolution_halfdelta = resolution_delta/2.0
+
+numbits = 1
+
+m_factor = np.sqrt(numbits)
+
+sigma_list_temp = [0.0, resolution_delta/(12*m_factor), resolution_delta/(10*m_factor), resolution_delta/(8*m_factor), resolution_delta/(6*m_factor), resolution_delta/(4*m_factor), resolution_delta/(3*m_factor), resolution_delta/(2*m_factor), resolution_delta/(m_factor), resolution_delta, 1.5*resolution_delta, 2*resolution_delta]
+
+sigma_list = np.round(sigma_list_temp, decimals=3)
+
+print('sigma list', sigma_list)
+# sigma_list = [0.0, 0.5/100.0, 1.0/100.0, 2.0/100.0, 3.0/100.0, 4.0/100.0, 6.0/100.0, 12.0/100.0, 18.0/100.0, 24.0/100.0, 32.0/100.0]
+
 
 def Hausdorff_dist_simple(vol_a,vol_b):
     dist_lst = []
@@ -477,6 +514,20 @@ def visualize_groundtruth(calib_path, label_path):
     # print('gt locations:', places)
     return corners_gt
 
+def get_volume_fromcorners(cluster_points):
+    cluster_points = cluster_points.reshape(-1, 3)
+    x_min = cluster_points[:,0].min()
+    y_min = cluster_points[:,1].min()
+    z_min = cluster_points[:,2].min()
+
+    x_max = cluster_points[:,0].max()
+    y_max = cluster_points[:,1].max()
+    z_max = cluster_points[:,2].max()
+
+    volume = abs(x_max-x_min)*abs(y_max-y_min)*abs(z_max-z_min)
+    return volume
+
+
 def get_boundingboxcorners(cluster_points):
     #print('point min', point_min)    
     #print('point max', point_max)
@@ -653,12 +704,13 @@ def get_tamperedindices_sequential_threebits(decoded_codebook):
     encode_cb_6 = np.array([1,1,0])
     encode_cb_7 = np.array([1,1,1])
     
-    cloud_to_compare = []
+    # cloud_to_compare = []
     error_counter = 0
 
     suspect_indices = []
     for index in range(len(decoded_codebook)):
-        
+        changed_indices = np.array([])
+        cloud_to_compare = np.array([])
         # index = indices[i]
         cloud_to_compare = decoded_codebook[index]
         
@@ -763,15 +815,149 @@ def get_tamperedindices_sequential_threebits(decoded_codebook):
     # else:
     #     print('PC compromised')
     suspect_indices = np.array(suspect_indices)
-    lensuspect = len(suspect_indices) 
+    # lensuspect = len(suspect_indices) 
     
-    if(lensuspect == 0):
-        lensuspect = 0.1
+    # if(lensuspect == 0):
+    #     lensuspect = 0.1
     error_rate =  error_counter/(3.0*len(decoded_codebook))
 
     return suspect_indices, error_rate 
         
+def get_tamperedindices_sequential_twobits(decoded_codebook):
+    
+    encode_cb_0 = np.array([0,0,0])
+    encode_cb_1 = np.array([0,1,0])
+    encode_cb_2 = np.array([1,0,0])
+    encode_cb_3 = np.array([1,1,0])
+    
+    
+    error_counter = 0
+
+    suspect_indices = []
+    for index in range(len(decoded_codebook)):
+        changed_indices = np.array([])
+        cloud_to_compare = np.array([])
+        # index = indices[i]
+        cloud_to_compare = decoded_codebook[index]
         
+        if(np.mod(index,4) == 0): # 0,8, 16...
+            # print('encode_0', encode_cb_0)
+            if( (cloud_to_compare[:2] == encode_cb_0[:2]).all()):
+                # print('**********condition exists [0,0,0]')
+                pass
+            else:
+                suspect_indices.append(index)    
+                changed_indices = np.where(cloud_to_compare[:2] != encode_cb_0[:2])
+                for i in range(len(changed_indices[0])):
+                    # increment the error counter
+                    error_counter += 1
+        
+        elif(np.mod(index, 4) == 1): # 1,9, ...
+            # print('encodecb_1', encode_cb_1)
+            if( (cloud_to_compare[:2] == encode_cb_1[:2]).all()):
+                pass
+                # print('**********condition exisits [0,0,1]')
+            else:
+                suspect_indices.append(index)
+                changed_indices = np.where(cloud_to_compare[:2] != encode_cb_1[:2])
+                for i in range(len(changed_indices[0])):
+                    # increment the error counter
+                    error_counter += 1
+        
+        elif(np.mod(index, 4) == 2): # 2,10 ...
+            # print('encodecb_2', encode_cb_2)
+            if( (cloud_to_compare[:2] == encode_cb_2[:2]).all()):
+                pass
+                # print('**********condition exisits [0,1,0]')
+            else:
+                suspect_indices.append(index)
+                changed_indices = np.where(cloud_to_compare[:2] != encode_cb_2[:2])
+                for i in range(len(changed_indices[0])):
+                    # increment the error counter
+                    error_counter += 1
+        
+        elif(np.mod(index, 4) == 3): # 3,11 ...
+            # print('encodecb_3', encode_cb_3)
+            if( (cloud_to_compare[:2] == encode_cb_3[:2]).all()):
+                pass
+                # print('**********condition exisits [0,1,1]')
+            else:
+                suspect_indices.append(index)
+                changed_indices = np.where(cloud_to_compare[:2] != encode_cb_3[:2])
+                for i in range(len(changed_indices[0])):
+                    # increment the error counter
+                    error_counter += 1
+        
+    # if(len(suspect_indices) == 0):
+    #     print('PC intact')
+    # else:
+    #     print('PC compromised')
+    suspect_indices = np.array(suspect_indices)
+    # lensuspect = len(suspect_indices) 
+    
+    # if(lensuspect == 0):
+    #     lensuspect = 0.1
+    error_rate =  error_counter/(2.0*len(decoded_codebook))
+
+    return suspect_indices, error_rate 
+
+
+def get_tamperedindices_sequential_onebit(decoded_codebook):
+    
+    encode_cb_0 = np.array([0,0,0])
+    encode_cb_1 = np.array([1,0,0])
+    # encode_cb_2 = np.array([0,1,0])
+    # encode_cb_3 = np.array([0,1,1])
+    
+    
+    error_counter = 0
+
+    suspect_indices = []
+    for index in range(len(decoded_codebook)):
+        changed_indices = np.array([])
+        cloud_to_compare = np.array([])
+        # index = indices[i]
+        cloud_to_compare = decoded_codebook[index]
+        
+        if(np.mod(index,2) == 0): # 0,8, 16...
+            # print('encode_0', encode_cb_0)
+            if( (cloud_to_compare[:1] == encode_cb_0[:1]).all()):
+                # print('**********condition exists [0,0,0]')
+                pass
+            else:
+                suspect_indices.append(index)    
+                changed_indices = np.where(cloud_to_compare[:1] != encode_cb_0[:1])
+                for i in range(len(changed_indices[0])):
+                    # increment the error counter
+                    error_counter += 1
+        
+        elif(np.mod(index, 2) == 1): # 1,9, ...
+            # print('encodecb_1', encode_cb_1)
+            if( (cloud_to_compare[:1] == encode_cb_1[:1]).all()):
+                pass
+                # print('**********condition exisits [0,0,1]')
+            else:
+                suspect_indices.append(index)
+                changed_indices = np.where(cloud_to_compare[:1] != encode_cb_1[:1])
+                for i in range(len(changed_indices[0])):
+                    # increment the error counter
+                    error_counter += 1
+                
+    # if(len(suspect_indices) == 0):
+    #     print('PC intact')
+    # else:
+    #     print('PC compromised')
+    suspect_indices = np.array(suspect_indices)
+    # lensuspect = len(suspect_indices) 
+    
+    # if(lensuspect == 0):
+    #     lensuspect = 0.1
+    error_rate =  error_counter/(1.0*len(decoded_codebook))
+
+    return suspect_indices, error_rate 
+
+
+
         
     #     print('suspect indices final', suspect_indices)
     #     tampered_pc_indices = get_tamperedpc_indices(suspect_indices, 2)
@@ -779,224 +965,282 @@ def get_tamperedindices_sequential_threebits(decoded_codebook):
     
     # # return tampered_pc_indices
 
-def get_BER_threebits(indices, decoded_codebook):
+# def get_BER_threebits(indices, decoded_codebook):
     
-    encode_cb_0 = np.array([0,0,0])
-    encode_cb_1 = np.array([0,0,1])
-    encode_cb_2 = np.array([0,1,0])
-    encode_cb_3 = np.array([0,1,1])
+#     encode_cb_0 = np.array([0,0,0])
+#     encode_cb_1 = np.array([0,0,1])
+#     encode_cb_2 = np.array([0,1,0])
+#     encode_cb_3 = np.array([0,1,1])
 
-    encode_cb_4 = np.array([1,0,0])
-    encode_cb_5 = np.array([1,0,1])
-    encode_cb_6 = np.array([1,1,0])
-    encode_cb_7 = np.array([1,1,1])
+#     encode_cb_4 = np.array([1,0,0])
+#     encode_cb_5 = np.array([1,0,1])
+#     encode_cb_6 = np.array([1,1,0])
+#     encode_cb_7 = np.array([1,1,1])
     
-    cloud_to_compare = []
-    error_counter = 0
-    index = 0
+#     cloud_to_compare = []
+#     error_counter = 0
+#     index = 0
 
-    for i in range(len(indices)):
+#     for i in range(len(indices)):
         
-        index = indices[i]
-        cloud_to_compare = decoded_codebook[index, :]
+#         index = indices[i]
+#         cloud_to_compare = decoded_codebook[index, :]
         
-        if(np.mod(index, 8) == 0): # 0,8, 16...
-            # print('encode_0', encode_cb_0)
-            if( (cloud_to_compare == encode_cb_0).all()):
-                # print('**********condition exists [0,0,0]')
-                pass
-            else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_0)
-                for i in range(len(changed_indices[0])):
-                    # increment the error counter
-                    error_counter += 1
+#         if(np.mod(index, 8) == 0): # 0,8, 16...
+#             # print('encode_0', encode_cb_0)
+#             if( (cloud_to_compare == encode_cb_0).all()):
+#                 # print('**********condition exists [0,0,0]')
+#                 pass
+#             else:
+#                 changed_indices = np.where(cloud_to_compare != encode_cb_0)
+#                 for i in range(len(changed_indices[0])):
+#                     # increment the error counter
+#                     error_counter += 1
         
-        elif(np.mod(index, 8) == 1): # 1,9, ...
-            # print('encodecb_1', encode_cb_1)
-            if( (cloud_to_compare == encode_cb_1).all()):
-                pass
-                # print('**********condition exisits [0,0,1]')
-            else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_1)
-                for i in range(len(changed_indices[0])):
-                    # increment the error counter
-                    error_counter += 1
+#         elif(np.mod(index, 8) == 1): # 1,9, ...
+#             # print('encodecb_1', encode_cb_1)
+#             if( (cloud_to_compare == encode_cb_1).all()):
+#                 pass
+#                 # print('**********condition exisits [0,0,1]')
+#             else:
+#                 changed_indices = np.where(cloud_to_compare != encode_cb_1)
+#                 for i in range(len(changed_indices[0])):
+#                     # increment the error counter
+#                     error_counter += 1
         
-        elif(np.mod(index, 8) == 2): # 2,10 ...
-            # print('encodecb_2', encode_cb_2)
-            if( (cloud_to_compare == encode_cb_2).all()):
-                pass
-                # print('**********condition exisits [0,1,0]')
-            else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_2)
-                for i in range(len(changed_indices[0])):
-                    # increment the error counter
-                    error_counter += 1
+#         elif(np.mod(index, 8) == 2): # 2,10 ...
+#             # print('encodecb_2', encode_cb_2)
+#             if( (cloud_to_compare == encode_cb_2).all()):
+#                 pass
+#                 # print('**********condition exisits [0,1,0]')
+#             else:
+#                 changed_indices = np.where(cloud_to_compare != encode_cb_2)
+#                 for i in range(len(changed_indices[0])):
+#                     # increment the error counter
+#                     error_counter += 1
         
-        elif(np.mod(index, 8) == 3): # 3,11 ...
-            # print('encodecb_3', encode_cb_3)
-            if( (cloud_to_compare == encode_cb_3).all()):
-                pass
-                # print('**********condition exisits [0,1,1]')
-            else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_3)
-                for i in range(len(changed_indices[0])):
-                    # increment the error counter
-                    error_counter += 1
+#         elif(np.mod(index, 8) == 3): # 3,11 ...
+#             # print('encodecb_3', encode_cb_3)
+#             if( (cloud_to_compare == encode_cb_3).all()):
+#                 pass
+#                 # print('**********condition exisits [0,1,1]')
+#             else:
+#                 changed_indices = np.where(cloud_to_compare != encode_cb_3)
+#                 for i in range(len(changed_indices[0])):
+#                     # increment the error counter
+#                     error_counter += 1
         
-        elif(np.mod(index, 8) == 4): # 4,12 ...
-            # print('encodecb_4', encode_cb_4)
-            if( (cloud_to_compare == encode_cb_4).all()):
-                pass
-                # print('**********condition exisits [1,0,0]')
-            else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_4)
-                for i in range(len(changed_indices[0])):
-                    # increment the error counter
-                    error_counter += 1
+#         elif(np.mod(index, 8) == 4): # 4,12 ...
+#             # print('encodecb_4', encode_cb_4)
+#             if( (cloud_to_compare == encode_cb_4).all()):
+#                 pass
+#                 # print('**********condition exisits [1,0,0]')
+#             else:
+#                 changed_indices = np.where(cloud_to_compare != encode_cb_4)
+#                 for i in range(len(changed_indices[0])):
+#                     # increment the error counter
+#                     error_counter += 1
         
-        elif(np.mod(index, 8) == 5): # 5,13 ...
-            # print('encodecb_5', encode_cb_5)
-            if( (cloud_to_compare == encode_cb_5).all()):
-                pass
-                # print('**********condition exisits [1,0,1]')
-            else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_5)
-                for i in range(len(changed_indices[0])):
-                    # increment the error counter
-                    error_counter += 1
+#         elif(np.mod(index, 8) == 5): # 5,13 ...
+#             # print('encodecb_5', encode_cb_5)
+#             if( (cloud_to_compare == encode_cb_5).all()):
+#                 pass
+#                 # print('**********condition exisits [1,0,1]')
+#             else:
+#                 changed_indices = np.where(cloud_to_compare != encode_cb_5)
+#                 for i in range(len(changed_indices[0])):
+#                     # increment the error counter
+#                     error_counter += 1
         
-        elif(np.mod(index, 8) == 6): # 6,14 ...
-            # print('encodecb_6', encode_cb_6)
-            if( (cloud_to_compare == encode_cb_6).all()):
-                pass
-                # print('**********condition exisits [1,1,0]')
-            else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_6)
-                for i in range(len(changed_indices[0])):
-                    # increment the error counter
-                    error_counter += 1
+#         elif(np.mod(index, 8) == 6): # 6,14 ...
+#             # print('encodecb_6', encode_cb_6)
+#             if( (cloud_to_compare == encode_cb_6).all()):
+#                 pass
+#                 # print('**********condition exisits [1,1,0]')
+#             else:
+#                 changed_indices = np.where(cloud_to_compare != encode_cb_6)
+#                 for i in range(len(changed_indices[0])):
+#                     # increment the error counter
+#                     error_counter += 1
         
-        elif(np.mod(index, 8) == 7): # 7,15 ...
-            # print('encodecb_7', encode_cb_7)
-            if( (cloud_to_compare == encode_cb_7).all()):
-                pass
-                # print('**********condition exisits [1,1,1]')
-            else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_7)
-                for i in range(len(changed_indices[0])):
-                    # increment the error counter
-                    error_counter += 1
+#         elif(np.mod(index, 8) == 7): # 7,15 ...
+#             # print('encodecb_7', encode_cb_7)
+#             if( (cloud_to_compare == encode_cb_7).all()):
+#                 pass
+#                 # print('**********condition exisits [1,1,1]')
+#             else:
+#                 changed_indices = np.where(cloud_to_compare != encode_cb_7)
+#                 for i in range(len(changed_indices[0])):
+#                     # increment the error counter
+#                     error_counter += 1
         
-        error_rate =  error_counter/(3.0*len(indices))
+#         error_rate =  error_counter/(3.0*len(indices))
 
-    return error_rate
+#     return error_rate
 
-def get_BER_twobits(indices, decoded_codebook):
+# def get_BER_twobits(indices, decoded_codebook):
     
-    encode_cb_0 = np.array([0,0])
-    encode_cb_1 = np.array([0,1])
-    encode_cb_2 = np.array([1,0])
-    encode_cb_3 = np.array([1,1])
+#     encode_cb_0 = np.array([0,0])
+#     encode_cb_1 = np.array([0,1])
+#     encode_cb_2 = np.array([1,0])
+#     encode_cb_3 = np.array([1,1])
 
-    cloud_to_compare = []
-    error_counter = 0
-    index = 0
+#     cloud_to_compare = []
+#     error_counter = 0
+#     index = 0
 
-    for i in range(len(indices)):
+#     for i in range(len(indices)):
         
-        index = indices[i]
-        cloud_to_compare = decoded_codebook[index, :]
+#         index = indices[i]
+#         cloud_to_compare = decoded_codebook[index, :]
         
-        if(np.mod(index, 4) == 0): # 0,8, 16...
-            # print('encode_0', encode_cb_0)
-            if( (cloud_to_compare == encode_cb_0).all()):
-                # print('**********condition exists [0,0,0]')
-                pass
-            else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_0)
-                for i in range(len(changed_indices[0])):
-                    # increment the error counter
-                    error_counter += 1
+#         if(np.mod(index, 4) == 0): # 0,8, 16...
+#             # print('encode_0', encode_cb_0)
+#             if( (cloud_to_compare == encode_cb_0).all()):
+#                 # print('**********condition exists [0,0,0]')
+#                 pass
+#             else:
+#                 changed_indices = np.where(cloud_to_compare != encode_cb_0)
+#                 for i in range(len(changed_indices[0])):
+#                     # increment the error counter
+#                     error_counter += 1
         
-        elif(np.mod(index, 4) == 1): # 1,9, ...
-            # print('encodecb_1', encode_cb_1)
-            if( (cloud_to_compare == encode_cb_1).all()):
-                pass
-                # print('**********condition exisits [0,0,1]')
-            else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_1)
-                for i in range(len(changed_indices[0])):
-                    # increment the error counter
-                    error_counter += 1
+#         elif(np.mod(index, 4) == 1): # 1,9, ...
+#             # print('encodecb_1', encode_cb_1)
+#             if( (cloud_to_compare == encode_cb_1).all()):
+#                 pass
+#                 # print('**********condition exisits [0,0,1]')
+#             else:
+#                 changed_indices = np.where(cloud_to_compare != encode_cb_1)
+#                 for i in range(len(changed_indices[0])):
+#                     # increment the error counter
+#                     error_counter += 1
         
-        elif(np.mod(index, 4) == 2): # 2,10 ...
-            # print('encodecb_2', encode_cb_2)
-            if( (cloud_to_compare == encode_cb_2).all()):
-                pass
-                # print('**********condition exisits [0,1,0]')
-            else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_2)
-                for i in range(len(changed_indices[0])):
-                    # increment the error counter
-                    error_counter += 1
+#         elif(np.mod(index, 4) == 2): # 2,10 ...
+#             # print('encodecb_2', encode_cb_2)
+#             if( (cloud_to_compare == encode_cb_2).all()):
+#                 pass
+#                 # print('**********condition exisits [0,1,0]')
+#             else:
+#                 changed_indices = np.where(cloud_to_compare != encode_cb_2)
+#                 for i in range(len(changed_indices[0])):
+#                     # increment the error counter
+#                     error_counter += 1
         
-        elif(np.mod(index, 4) == 3): # 3,11 ...
-            # print('encodecb_3', encode_cb_3)
-            if( (cloud_to_compare == encode_cb_3).all()):
-                pass
-                # print('**********condition exisits [0,1,1]')
-            else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_3)
-                for i in range(len(changed_indices[0])):
-                    # increment the error counter
-                    error_counter += 1
+#         elif(np.mod(index, 4) == 3): # 3,11 ...
+#             # print('encodecb_3', encode_cb_3)
+#             if( (cloud_to_compare == encode_cb_3).all()):
+#                 pass
+#                 # print('**********condition exisits [0,1,1]')
+#             else:
+#                 changed_indices = np.where(cloud_to_compare != encode_cb_3)
+#                 for i in range(len(changed_indices[0])):
+#                     # increment the error counter
+#                     error_counter += 1
         
-        error_rate =  error_counter/(2.0*len(indices))
-    return error_rate
+#         error_rate =  error_counter/(2.0*len(indices))
+#     return error_rate
 
-def get_BER_twobits(indices, decoded_codebook):
+# def get_BER_twobits(indices, decoded_codebook):
     
-    encode_cb_0 = np.array([0])
-    encode_cb_1 = np.array([1])
+#     encode_cb_0 = np.array([0])
+#     encode_cb_1 = np.array([1])
     
 
-    cloud_to_compare = []
-    error_counter = 0
-    index = 0
+#     cloud_to_compare = []
+#     error_counter = 0
+#     index = 0
 
-    for i in range(len(indices)):
+#     for i in range(len(indices)):
         
-        index = indices[i]
-        cloud_to_compare = decoded_codebook[index, :]
+#         index = indices[i]
+#         cloud_to_compare = decoded_codebook[index, :]
         
-        if(np.mod(index, 2) == 0): # 0,8, 16...
-            # print('encode_0', encode_cb_0)
-            if( (cloud_to_compare == encode_cb_0).all()):
-                # print('**********condition exists [0,0,0]')
-                pass
-            else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_0)
-                for i in range(len(changed_indices[0])):
-                    # increment the error counter
-                    error_counter += 1
+#         if(np.mod(index, 2) == 0): # 0,8, 16...
+#             # print('encode_0', encode_cb_0)
+#             if( (cloud_to_compare == encode_cb_0).all()):
+#                 # print('**********condition exists [0,0,0]')
+#                 pass
+#             else:
+#                 changed_indices = np.where(cloud_to_compare != encode_cb_0)
+#                 for i in range(len(changed_indices[0])):
+#                     # increment the error counter
+#                     error_counter += 1
         
-        elif(np.mod(index, 2) == 1): # 1,9, ...
-            # print('encodecb_1', encode_cb_1)
-            if( (cloud_to_compare == encode_cb_1).all()):
-                pass
-                # print('**********condition exisits [0,0,1]')
-            else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_1)
-                for i in range(len(changed_indices[0])):
-                    # increment the error counter
-                    error_counter += 1
+#         elif(np.mod(index, 2) == 1): # 1,9, ...
+#             # print('encodecb_1', encode_cb_1)
+#             if( (cloud_to_compare == encode_cb_1).all()):
+#                 pass
+#                 # print('**********condition exisits [0,0,1]')
+#             else:
+#                 changed_indices = np.where(cloud_to_compare != encode_cb_1)
+#                 for i in range(len(changed_indices[0])):
+#                     # increment the error counter
+#                     error_counter += 1
         
-        error_rate =  error_counter/(1.0*len(indices))
+#         error_rate =  error_counter/(1.0*len(indices))
         
-    return error_rate
+#     return error_rate
 
-   def qim_decode(pc, resolution):
+
+def qim_decode_new(pc, resolution, x_in, y_in, z_in):
+# We can check if each coordinate is even or odd.. while encoding 
+    final_code = []
+    cloud_row_halfdelta = []
+    cloud_row_delta = []
+    pc_delta = []
+    pc_halfdelta =[]
+
+    cloud_row_delta = getQuantizedValues_from_pointCloud(pc, resolution, x_in,y_in,z_in)
+    print('cloud_row_delta', cloud_row_delta)
+    cloud_row_halfdelta = getQuantizedValues_from_pointCloud(pc, resolution/2.0, x_in,y_in,z_in)
+    print('cloud_row_halfdelta', cloud_row_halfdelta)
+
+    pc_delta =  getPointCloud_from_quantizedValues(cloud_row_delta, resolution, x_in, y_in, z_in)
+
+    pc_halfdelta = getPointCloud_from_quantizedValues(cloud_row_halfdelta, resolution/2.0, x_in, y_in, z_in) 
+
+    print('received point cloud', pc)
+    print('pc delta', pc_delta)
+    print('pc halfdelta', pc_halfdelta)
+
+    for j in range (cloud_row_delta.shape[0]):
+        # row_odd_flags = []       
+        # row_odd_flags = get_oddflag(cloud_row_[j])
+
+        # make the quant value row before getting the odd flags
+        cloud_row_read = []
+        # X value
+        if( abs(pc[j][0]-pc_delta[j][0]) < abs(pc[j][0]-pc_halfdelta[j][0])  ):
+            #pick the corresponding quant value from cloud_row_delta
+            cloud_row_read.append(cloud_row_delta[j][0])
+        else:
+            #pick the corresponding quant value from cloud_row_halfdelta
+            cloud_row_read.append(cloud_row_halfdelta[j][0])
+        # Y value
+        if( abs(pc[j][1]-pc_delta[j][1]) < abs(pc[j][1]-pc_halfdelta[j][1])  ):
+            #pick the corresponding quant value from cloud_row_delta
+            cloud_row_read.append(cloud_row_delta[j][1])
+        else:
+            #pick the corresponding quant value from cloud_row_halfdelta
+            cloud_row_read.append(cloud_row_halfdelta[j][1]) 
+        # z value
+        if( abs(pc[j][2]-pc_delta[j][2]) < abs(pc[j][2]-pc_halfdelta[j][2])  ):
+            #pick the corresponding quant value from cloud_row_delta
+            cloud_row_read.append(cloud_row_delta[j][2]) 
+        else:
+            #pick the corresponding quant value from cloud_row_halfdelta
+            cloud_row_read.append(cloud_row_halfdelta[j][2]) 
+
+        print('cloud row read', cloud_row_read)
+        row_odd_flags = []       
+        row_odd_flags = get_oddflag(cloud_row_read)
+        final_code.append(row_odd_flags)
+
+    return final_code
+   
+
+def qim_decode(pc, resolution, numbits):
     # We can check if each coordinate is even or odd.. while encoding 
     final_code = []
     cloud_row_read = []
@@ -1005,9 +1249,7 @@ def get_BER_twobits(indices, decoded_codebook):
     for j in range (cloud_row_read.shape[0]):
         row_odd_flags = []       
         row_odd_flags = get_oddflag(cloud_row_read[j])
-        final_code.append(row_odd_flags)
-
-    
+        final_code.append(row_odd_flags[:numbits])
     # print('******decoded quantized values', cloud_row_read.shape, cloud_row_read)
     
     return final_code, cloud_row_read
@@ -1277,10 +1519,10 @@ def qim_quantize_restricted_threebits_new(pc_in):
     # pc_values_decoded = []
     
     while pc_row_count < len(pc_in):
-        cloud_to_compare = []
+        cloud_to_compare = np.array([])
         cloud_row = []
         cloud_row_halfdelta = []
-
+        changed_indices = np.array([])
         pc = pc_in[pc_row_count, :]
         # cloud_row_clean = ((pc - np.array([x[0],y[0],z[0]])) / resolution).astype(np.int32)
         quantized_values_row = getQuantizedValues_from_pointCloud(pc, resolution_delta, x,y,z)
@@ -1290,12 +1532,8 @@ def qim_quantize_restricted_threebits_new(pc_in):
         cloud_row_halfdelta =  2*cloud_row
         # print('input cloud- Half Delta', cloud_row_halfdelta)
 
-        cloud_to_compare = np.array(get_oddflag(cloud_row))
+        cloud_to_compare = np.array(get_oddflag(cloud_row_halfdelta))
         # print('input oddflag', cloud_to_compare)
-
-        #reset code book
-        code_book = [0,0,0]
-        # print('cloud compare', cloud_to_compare)
 
         if(np.mod(pc_row_count, 8) == 0): # 0,8, 16...
             # print('encode_0', encode_cb_0)
@@ -1304,13 +1542,7 @@ def qim_quantize_restricted_threebits_new(pc_in):
                 pass
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_0)
-                # print('0 change indices & length', changed_indices, len(changed_indices[0]))
-                # print('\n')
-                for i in range(len(changed_indices[0])):
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
-                # print('condition [000]', (count), cloud_row)
-            code_book = encode_cb_0 #[0,0,0]   
-        
+
         elif(np.mod(pc_row_count, 8) == 1): # 1,9, ...
             # print('encodecb_1', encode_cb_1)
             if( (cloud_to_compare == encode_cb_1).all()):
@@ -1318,12 +1550,6 @@ def qim_quantize_restricted_threebits_new(pc_in):
                 # print('**********condition exisits [0,0,1]')
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_1)
-                # print('1 changed indices**', changed_indices)
-                for i in range(len(changed_indices[0])):
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
-                
-                # print('condition [001]', (count), cloud_row)
-            code_book = encode_cb_1 #[0,0,1]
 
         elif(np.mod(pc_row_count, 8) == 2): # 2,10 ...
             # print('encodecb_2', encode_cb_2)
@@ -1332,13 +1558,7 @@ def qim_quantize_restricted_threebits_new(pc_in):
                 # print('**********condition exisits [0,1,0]')
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_2)
-                # print('2 change indices & length', changed_indices, len(changed_indices[0]))
-                for i in range(len(changed_indices[0])):
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
                 
-                # print('condition [101]', (count), cloud_row)
-            code_book = encode_cb_2 #[1,0,1]
-
         elif(np.mod(pc_row_count, 8) == 3): # 3,11 ...
             # print('encodecb_3', encode_cb_3)
             if( (cloud_to_compare == encode_cb_3).all()):
@@ -1346,13 +1566,7 @@ def qim_quantize_restricted_threebits_new(pc_in):
                 # print('**********condition exisits [0,1,1]')
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_3)
-                # print('3 change indices & length', changed_indices, len(changed_indices[0]))
-                for i in range(len(changed_indices[0])):
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
                 
-                # print('condition [011]', (count), cloud_row)
-            code_book = encode_cb_3 #[0,1,1]
-        
         elif(np.mod(pc_row_count, 8) == 4): # 4,12 ...
             # print('encodecb_4', encode_cb_4)
             if( (cloud_to_compare == encode_cb_4).all()):
@@ -1360,13 +1574,7 @@ def qim_quantize_restricted_threebits_new(pc_in):
                 # print('**********condition exisits [1,0,0]')
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_4)
-                # print('4 change indices & length', changed_indices, len(changed_indices[0]))
-                for i in range(len(changed_indices[0])):
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
                 
-                # print('condition [100]', (count), cloud_row)
-            code_book = encode_cb_4 #[1,0,0]
-        
         elif(np.mod(pc_row_count, 8) == 5): # 5,13 ...
             # print('encodecb_5', encode_cb_5)
             if( (cloud_to_compare == encode_cb_5).all()):
@@ -1374,12 +1582,7 @@ def qim_quantize_restricted_threebits_new(pc_in):
                 # print('**********condition exisits [1,0,1]')
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_5)
-                for i in range(len(changed_indices[0])):
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
                 
-                # print('condition [101]', (count), cloud_row)
-            code_book = encode_cb_5 #[1,0,1]
-        
         elif(np.mod(pc_row_count, 8) == 6): # 6,14 ...
             # print('encodecb_6', encode_cb_6)
             if( (cloud_to_compare == encode_cb_6).all()):
@@ -1387,13 +1590,7 @@ def qim_quantize_restricted_threebits_new(pc_in):
                 # print('**********condition exisits [1,1,0]')
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_6)
-                # print('6 change indices & length', changed_indices, len(changed_indices[0]))
-                for i in range(len(changed_indices[0])):
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
                 
-                # print('condition [110]', (count), cloud_row)
-            code_book = encode_cb_6 #[1,1,0]
-        
         elif(np.mod(pc_row_count, 8) == 7): # 7,15 ...
             # print('encodecb_7', encode_cb_7)
             if( (cloud_to_compare == encode_cb_7).all()):
@@ -1402,41 +1599,126 @@ def qim_quantize_restricted_threebits_new(pc_in):
             else:
                 changed_indices = np.where(cloud_to_compare != encode_cb_7)
                 # print('7 change indices & length', changed_indices, len(changed_indices[0]))
-                for i in range(len(changed_indices[0])):
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
-                
-
-                # print('condition [111]', (count), cloud_row)
-            code_book = encode_cb_7 #[1,1,1]
+        #print('changed index size', changed_indices)
         
+
+        if(len(changed_indices)):
+            for i in range(len(changed_indices[0])):
+                cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
+
 
         quant_encoded.append(cloud_row)
         quant_encoded_halfdelta.append(cloud_row_halfdelta)
-        cbook.append(code_book)
-        # print('row# and code book', pc_row_count, code_book)
-
+        
         pc_row_count = pc_row_count + 1
         if(pc_row_count > len(pc_in)):
             print('something wrong.. exceeded length of pc')
         
-        # pc_values_decoded.append(pc_values)
-        # cbook_decoded.append(cbook_from_pcvalues)
+        
+    return quant_encoded, quant_encoded_halfdelta
 
-        #get the updated numpyh representation, updated point cloud and the codebook from data
-        # cloud_row_numpyrep = cloud_row
-        # cloud_row_pcvalues = cloud_row_numpyrep*resolution + np.array([x[0],y[0],z[0]])
-        # codebook_decoded = np.array(get_oddflag(cloud_row_pcvalues))
-        # codebook_basedoncount = code_book
 
-    return quant_encoded, quant_encoded_halfdelta, cbook
+def qim_dummy_encoded_pc(length_in, num_bits):
+    
+    pc_row_count = 0
+    cbook = []
+        
+    if(num_bits == 3):
+        encode_cb_0 = np.array([0,0,0])
+        encode_cb_1 = np.array([0,0,1])
+        encode_cb_2 = np.array([0,1,0])
+        encode_cb_3 = np.array([0,1,1])
+
+        encode_cb_4 = np.array([1,0,0])
+        encode_cb_5 = np.array([1,0,1])
+        encode_cb_6 = np.array([1,1,0])
+        encode_cb_7 = np.array([1,1,1])
+        
+        
+        while pc_row_count < length_in:
+            
+            code_book = [0,0,0]
+            # print('cloud compare', cloud_to_compare)
+
+            if(np.mod(pc_row_count, 8) == 0): # 0,8, 16...
+                code_book = encode_cb_0 #[0,0,0]   
+            elif(np.mod(pc_row_count, 8) == 1): # 1,9, ...
+                code_book = encode_cb_1 #[0,0,1]
+            elif(np.mod(pc_row_count, 8) == 2): # 2,10 ...
+                code_book = encode_cb_2 #[1,0,1]
+            elif(np.mod(pc_row_count, 8) == 3): # 3,11 ...
+                code_book = encode_cb_3 #[0,1,1]
+            elif(np.mod(pc_row_count, 8) == 4): # 4,12 ...
+                code_book = encode_cb_4 #[1,0,0]
+            elif(np.mod(pc_row_count, 8) == 5): # 5,13 ...
+                code_book = encode_cb_5 #[1,0,1]
+            elif(np.mod(pc_row_count, 8) == 6): # 6,14 ...
+                code_book = encode_cb_6 #[1,1,0]
+            elif(np.mod(pc_row_count, 8) == 7): # 7,15 ...
+                code_book = encode_cb_7 #[1,1,1]
+            
+
+            cbook.append(code_book)
+            pc_row_count = pc_row_count + 1
+
+    elif(num_bits == 2):
+        encode_cb_0 = np.array([0,0])
+        encode_cb_1 = np.array([0,1])
+        encode_cb_2 = np.array([1,0])
+        encode_cb_3 = np.array([1,1])
+
+        
+        while pc_row_count < length_in:
+            
+            code_book = [0,0]
+            # print('cloud compare', cloud_to_compare)
+
+            if(np.mod(pc_row_count, 4) == 0): # 0,8, 16...
+                code_book = encode_cb_0 #[0,0,0]   
+            elif(np.mod(pc_row_count, 4) == 1): # 1,9, ...
+                code_book = encode_cb_1 #[0,0,1]
+            elif(np.mod(pc_row_count, 4) == 2): # 2,10 ...
+                code_book = encode_cb_2 #[1,0,1]
+            elif(np.mod(pc_row_count, 4) == 3): # 3,11 ...
+                code_book = encode_cb_3 #[0,1,1]
+            
+            cbook.append(code_book)
+            pc_row_count = pc_row_count + 1
+
+    elif(num_bits == 1):
+        encode_cb_0 = np.array([0])
+        encode_cb_1 = np.array([1])
+        
+        while pc_row_count < length_in:
+            
+            code_book = [0]
+            # print('cloud compare', cloud_to_compare)
+
+            if(np.mod(pc_row_count, 2) == 0): # 0,8, 16...
+                code_book = encode_cb_0 #[0,0,0]   
+            elif(np.mod(pc_row_count, 2) == 1): # 1,9, ...
+                code_book = encode_cb_1 #[0,0,1]
+            
+            cbook.append(code_book)
+            pc_row_count = pc_row_count + 1
+
+    return np.array(cbook)
+
+
+
+
 
 def qim_quantize_restricted_twobits(pc_in):
-    
-    encode_cb_0 = np.array([0,0])
-    encode_cb_1 = np.array([0,1])
-    encode_cb_2 = np.array([1,0])
-    encode_cb_3 = np.array([1,1])
+     
+    encode_cb_0 = np.array([0,0,0])
+    encode_cb_1 = np.array([0,1,0])
+    encode_cb_2 = np.array([1,0,0])
+    encode_cb_3 = np.array([1,1,0])
 
+    # encode_cb_4 = np.array([1,0,0])
+    # encode_cb_5 = np.array([1,0,1])
+    # encode_cb_6 = np.array([1,1,0])
+    # encode_cb_7 = np.array([1,1,1])
     
     pc_row_count = 0
 
@@ -1447,135 +1729,86 @@ def qim_quantize_restricted_twobits(pc_in):
     # pc_values_decoded = []
     
     while pc_row_count < len(pc_in):
-        cloud_to_compare = []
+        cloud_to_compare = np.array([])
         cloud_row = []
         cloud_row_halfdelta = []
 
+        changed_indices = np.array([])
         pc = pc_in[pc_row_count, :]
         # cloud_row_clean = ((pc - np.array([x[0],y[0],z[0]])) / resolution).astype(np.int32)
         quantized_values_row = getQuantizedValues_from_pointCloud(pc, resolution_delta, x,y,z)
         # print('clean', cloud_row_clean)
-        cloud_row =  quantized_values_row[:2]
-        # print('input cloud', cloud_row)
+        cloud_row =  quantized_values_row
+        # print('input cloud-Delta', cloud_row)
         cloud_row_halfdelta =  2*cloud_row
-        # print('input cloud', cloud_row_halfdelta)
+        # print('input cloud- Half Delta', cloud_row_halfdelta)
 
         cloud_to_compare = np.array(get_oddflag(cloud_row_halfdelta))
         # print('input oddflag', cloud_to_compare)
-
-        #reset code book
-        code_book = [0,0]
-        # print('cloud compare', cloud_to_compare)
 
         if(np.mod(pc_row_count, 4) == 0): # 0,8, 16...
             # print('encode_0', encode_cb_0)
-            if( (cloud_to_compare == encode_cb_0).all()):
+            if( (cloud_to_compare[:2] == encode_cb_0[:2]).all() ):
                 # print('**********condition exists [0,0,0]')
                 pass
             else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_0)
-                # print('0 change indices & length', changed_indices, len(changed_indices[0]))
-                # print('\n')
-                for i in range(len(changed_indices[0])):
-                    if(encode_cb_0[changed_indices[0][i]] == 1):
-                        cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
-                    else:
-                        cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] - 1
+                changed_indices = np.where(cloud_to_compare[:2] != encode_cb_0[:2])
 
-                # print('condition [000]', (count), cloud_row)
-            code_book = encode_cb_0 #[0,0,0]   
-        
         elif(np.mod(pc_row_count, 4) == 1): # 1,9, ...
             # print('encodecb_1', encode_cb_1)
-            if( (cloud_to_compare == encode_cb_1).all()):
+            if( (cloud_to_compare[:2] == encode_cb_1[:2]).all()):
                 pass
                 # print('**********condition exisits [0,0,1]')
             else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_1)
-                # print('1 changed indices**', changed_indices)
-                for i in range(len(changed_indices[0])):
-                    if(encode_cb_1[changed_indices[0][i]] == 1):
-                        cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
-                    else:
-                        cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] - 1
-
-                # print('condition [001]', (count), cloud_row)
-            code_book = encode_cb_1 #[0,0,1]
-
+                changed_indices = np.where(cloud_to_compare[:2] != encode_cb_1[:2])
+        
         elif(np.mod(pc_row_count, 4) == 2): # 2,10 ...
             # print('encodecb_2', encode_cb_2)
-            if( (cloud_to_compare == encode_cb_2).all()):
+            if( (cloud_to_compare[:2] == encode_cb_2[:2]).all()):
                 pass
                 # print('**********condition exisits [0,1,0]')
             else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_2)
-                # print('2 change indices & length', changed_indices, len(changed_indices[0]))
-                for i in range(len(changed_indices[0])):
-                    if(encode_cb_2[changed_indices[0][i]] == 1):
-                        cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
-                    else:
-                        cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] - 1
-
-                # print('condition [101]', (count), cloud_row)
-            code_book = encode_cb_2 #[1,0,1]
-
-        elif(np.mod(pc_row_count, 4) == 3): # 3,11 ...
-            # print('encodecb_3', encode_cb_3)
-            if( (cloud_to_compare == encode_cb_3).all()):
+                changed_indices = np.where(cloud_to_compare[:2] != encode_cb_2[:2])
+        
+        elif(np.mod(pc_row_count, 4) == 3): # 2,10 ...
+            # print('encodecb_2', encode_cb_2)
+            if( (cloud_to_compare[:2] == encode_cb_3[:2]).all()):
                 pass
-                # print('**********condition exisits [0,1,1]')
+                # print('**********condition exisits [0,1,0]')
             else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_3)
-                # print('3 change indices & length', changed_indices, len(changed_indices[0]))
-                for i in range(len(changed_indices[0])):
-                    if(encode_cb_3[changed_indices[0][i]] == 1):
-                        cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
-                    else:
-                        cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] - 1
-
-                # print('condition [011]', (count), cloud_row)
-            code_book = encode_cb_3 #[0,1,1]
+                changed_indices = np.where(cloud_to_compare[:2] != encode_cb_3[:2])
         
+        # print('0 change indices & length', changed_indices, len(changed_indices[0]))
+        #print('length of changed indices:', len(changed_indices[0]) )
+        # print('\n')
         
-        
-
+        if(len(changed_indices)):
+            for i in range(len(changed_indices[0])):
+                    cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
+         
         quant_encoded.append(cloud_row)
         quant_encoded_halfdelta.append(cloud_row_halfdelta)
-        cbook.append(code_book)
+        
         # print('row# and code book', pc_row_count, code_book)
-
         pc_row_count = pc_row_count + 1
         if(pc_row_count > len(pc_in)):
             print('something wrong.. exceeded length of pc')
-        
-        # pc_values_decoded.append(pc_values)
-        # cbook_decoded.append(cbook_from_pcvalues)
 
-        #get the updated numpyh representation, updated point cloud and the codebook from data
-        # cloud_row_numpyrep = cloud_row
-        # cloud_row_pcvalues = cloud_row_numpyrep*resolution + np.array([x[0],y[0],z[0]])
-        # codebook_decoded = np.array(get_oddflag(cloud_row_pcvalues))
-        # codebook_basedoncount = code_book
-
-    return quant_encoded, quant_encoded_halfdelta, cbook
+    return quant_encoded, quant_encoded_halfdelta
 
 
-def qim_quantize_restricted_singlebit(pc_in):
+def qim_quantize_restricted_onebit(pc_in):
+     
+    encode_cb_0 = np.array([0,0,0])
+    encode_cb_1 = np.array([1,1,1])
+    #encode_cb_2 = np.array([0,1,0])
+    #encode_cb_3 = np.array([0,1,1])
+
+    # encode_cb_4 = np.array([1,0,0])
+    # encode_cb_5 = np.array([1,0,1])
+    # encode_cb_6 = np.array([1,1,0])
+    # encode_cb_7 = np.array([1,1,1])
     
-    encode_cb_0 = np.array([0])
-    encode_cb_1 = np.array([1])
-    # encode_cb_2 = np.array([1,0])
-    # encode_cb_3 = np.array([1,1])
-
-
     pc_row_count = 0
 
     quant_encoded = []
@@ -1585,84 +1818,54 @@ def qim_quantize_restricted_singlebit(pc_in):
     # pc_values_decoded = []
     
     while pc_row_count < len(pc_in):
-        cloud_to_compare = []
+        cloud_to_compare = np.array([])
         cloud_row = []
         cloud_row_halfdelta = []
 
+        changed_indices = np.array([])
         pc = pc_in[pc_row_count, :]
         # cloud_row_clean = ((pc - np.array([x[0],y[0],z[0]])) / resolution).astype(np.int32)
         quantized_values_row = getQuantizedValues_from_pointCloud(pc, resolution_delta, x,y,z)
         # print('clean', cloud_row_clean)
-        cloud_row =  quantized_values_row[:1]
-        # print('input cloud', cloud_row)
+        cloud_row =  quantized_values_row
+        # print('input cloud-Delta', cloud_row)
         cloud_row_halfdelta =  2*cloud_row
-        # print('input cloud', cloud_row_halfdelta)
+        # print('input cloud- Half Delta', cloud_row_halfdelta)
 
         cloud_to_compare = np.array(get_oddflag(cloud_row_halfdelta))
         # print('input oddflag', cloud_to_compare)
 
-        #reset code book
-        code_book = [0]
-        # print('cloud compare', cloud_to_compare)
-
         if(np.mod(pc_row_count, 2) == 0): # 0,8, 16...
             # print('encode_0', encode_cb_0)
-            if( (cloud_to_compare == encode_cb_0).all()):
+            if( (cloud_to_compare[:1] == encode_cb_0[:1]).all() ):
                 # print('**********condition exists [0,0,0]')
                 pass
             else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_0)
-                # print('0 change indices & length', changed_indices, len(changed_indices[0]))
-                # print('\n')
-                for i in range(len(changed_indices[0])):
-                    if(encode_cb_0[changed_indices[0][i]] == 1):
-                        cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
-                    else:
-                        cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] - 1
+                changed_indices = np.where(cloud_to_compare[:1] != encode_cb_0[:1])
 
-                # print('condition [000]', (count), cloud_row)
-            code_book = encode_cb_0 #[0,0,0]   
-        
         elif(np.mod(pc_row_count, 2) == 1): # 1,9, ...
             # print('encodecb_1', encode_cb_1)
-            if( (cloud_to_compare == encode_cb_1).all()):
+            if( (cloud_to_compare[:1] == encode_cb_1[:1]).all()):
                 pass
                 # print('**********condition exisits [0,0,1]')
             else:
-                changed_indices = np.where(cloud_to_compare != encode_cb_1)
-                # print('1 changed indices**', changed_indices)
-                for i in range(len(changed_indices[0])):
-                    if(encode_cb_1[changed_indices[0][i]] == 1):
-                        cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] + 1
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
-                    else:
-                        cloud_row[changed_indices[0][i]] = cloud_row[changed_indices[0][i]] - 1
-                        cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] - 1
-
-                # print('condition [001]', (count), cloud_row)
-            code_book = encode_cb_1 #[0,0,1]
-
+                changed_indices = np.where(cloud_to_compare[:1] != encode_cb_1[:1])
+                
+        if(len(changed_indices)):
+            for i in range(len(changed_indices[0])):
+                    cloud_row_halfdelta[changed_indices[0][i]] = cloud_row_halfdelta[changed_indices[0][i]] + 1
+         
         quant_encoded.append(cloud_row)
         quant_encoded_halfdelta.append(cloud_row_halfdelta)
-        cbook.append(code_book)
+        
         # print('row# and code book', pc_row_count, code_book)
-
         pc_row_count = pc_row_count + 1
         if(pc_row_count > len(pc_in)):
             print('something wrong.. exceeded length of pc')
-        
-        # pc_values_decoded.append(pc_values)
-        # cbook_decoded.append(cbook_from_pcvalues)
 
-        #get the updated numpyh representation, updated point cloud and the codebook from data
-        # cloud_row_numpyrep = cloud_row
-        # cloud_row_pcvalues = cloud_row_numpyrep*resolution + np.array([x[0],y[0],z[0]])
-        # codebook_decoded = np.array(get_oddflag(cloud_row_pcvalues))
-        # codebook_basedoncount = code_book
+    return quant_encoded, quant_encoded_halfdelta
 
-    return quant_encoded, quant_encoded_halfdelta, cbook
+
 
 def compare_codebooks(encode_cb, decode_cb):
     print('encode cb length', encode_cb.shape[0])
@@ -1702,23 +1905,33 @@ if __name__ == '__main__':
     # quantized_pc  = c*resolution_delta + np.array([x[0],y[0],z[0]])
     # print('pc values', quantized_pc) 
 
-    voxel_delta, voxel_halfdelta, encoded_CB = qim_quantize_restricted_threebits(pc_input)
+    # voxel_delta, voxel_halfdelta, encoded_CB = qim_quantize_restricted_threebits(pc_input)
+
+    voxel_delta, voxel_halfdelta, encoded_CB = qim_quantize_restricted_threebits_new(pc_input)
+    
+    
     voxel_halfdelta_npy = np.array([voxel_halfdelta]).reshape(-1,3)
+    
+    
     print('voxel_halfdelta_npy representation', voxel_halfdelta_npy)
-    print('voxel delta', voxel_delta)
+    print('voxel delta', np.array(voxel_delta))
     # print('voxel_halfdelta', voxel_halfdelta)
 
     # 2. Get the PC from the quantized values 
     # #encoded_quantized_pc  = encoded_pc*resolution + np.array([x[0],y[0],z[0]])
     encoded_quantized_pc  = getPointCloud_from_quantizedValues(voxel_halfdelta_npy, resolution_halfdelta, x,y,z)
+    
     print('qim pc values', encoded_quantized_pc) 
     # d = ((pc_input - np.array([x[0],y[0],z[0]])) / resolution).astype(np.int32)
 
     # # 3. Get the decoded codebook and quantized values of decoded point cloud   
     # # Decode the point cloud and get the code book
     
-    decoded_CB, decoded_quantized_values = qim_decode(encoded_quantized_pc, resolution_halfdelta)
-    print('decoded pc numpy representation', np.array([decoded_quantized_values]).reshape(-1,3))
+    # decoded_CB, decoded_quantized_values = qim_decode(encoded_quantized_pc, resolution_halfdelta)
+
+    decoded_CB = qim_decode_new(encoded_quantized_pc, resolution_delta, x,y,z)
+
+    # print('decoded pc numpy representation', np.array([decoded_quantized_values]).reshape(-1,3))
 
     decoded_codebook = np.array([decoded_CB]).reshape(-1,3)
     encoded_codebook = np.array([encoded_CB]).reshape(-1,3)
