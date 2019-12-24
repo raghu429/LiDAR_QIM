@@ -1,0 +1,346 @@
+# -*- coding: utf-8 -*-
+"""
+Spyder Editor
+
+This is a temporary script file.
+"""
+
+#!/usr/bin/env python
+import numpy as np
+import time
+import math
+from decimal import Decimal
+from random import randint
+from random import seed
+
+#
+
+
+pc_test = np.array([ 40.30910863,   8.56577551,  54.46320516,  60.39623699,
+         7.25475803,   4.65158945,  24.0168705 ,  68.55214697,
+        69.95924573,  15.59284008,  17.31696879,  22.58139698,
+        37.97602155,  23.98546057,  15.84086424,  64.47562428,
+        64.68739303,  25.09177234,  68.35058661,  20.31693454,
+        31.41407668,   7.74210555,   9.88657606,  13.63142911,
+        49.15850831,  30.58308429,  28.70665896,  31.94941439,
+         8.84467812,  55.1633896 ,  58.55935082,   0.37767247,
+        19.88306825,  39.77105362,  66.51084712,  66.87295357,
+        62.33949719,  47.45150092,  26.96712105,  46.75531802,
+        29.20449607,  17.91013346,  13.92973487,  42.06037351,
+         2.83635417,  58.57577831,  24.29099014,  21.64608291,
+        38.06935796,  37.76095876,  60.17714093,  67.97861171,
+        64.5394034 ,  14.40865039,  42.46893421,   9.8684628 ,
+        32.20983921,   7.14781606,   9.81968821,   7.74585164,
+        42.2642034 ,  39.67295414,  33.71234525,   5.65818973,
+        64.67198355,   0.11937829,  52.89525163,  13.54698677,
+        48.06953991,  39.07171809,  41.40008904,  48.51505537,
+        32.02886082,  30.39700507,  46.70752464,  34.76806784,
+        31.2269244 ,  41.47089453,   0.85778553,  44.13613895,
+        43.13503661,  46.43440349,  47.12504245,  29.62829259,
+        32.41893949,   7.47204453,  67.67971921,  49.86236027,
+        41.963319  ,  34.12416954,  63.10778699,  63.89890794,
+        15.49575045,  12.94987143,  62.06413481,  65.57312303,
+        48.38139074,  26.62684837,  46.58874116,  69.61921899,
+        63.89743138,  10.92567986,  56.93208869,  62.44335683,
+        35.06506845,  68.32443014,  41.67924344,  13.36353113,
+        34.33414038,  23.70018663,  33.56611469,  37.77336882,
+        66.24683282,  54.81100422,  39.27624226,  12.03594921,
+        14.77208202,  39.34060885,  43.97245292,  16.91737447,
+        52.27097747,  63.27247195,   7.4567154 ,  30.42538059,
+         5.67864239,  31.59656299,   4.83738733,  29.87560077,
+        55.15963179,  54.76316068,  66.60179193,  40.85658816,
+        15.2719692 ,  52.97308566,  54.8711188 ,  32.71282434,
+        39.64884934,   7.33066156,  19.55792863,  64.60204768,
+        31.426122  ,  51.22723749,  11.62464807,  20.00079172,
+        39.69019735,  37.47606844,  56.2294566 ,  34.99068987,
+        65.42478433,  56.22206364,   9.3182722 ,  61.51006047,
+        15.90047396,  32.11596611,  15.77329698,  34.34906891,
+        12.2422282 ,  10.16535032,  66.13204351,  51.5072004 ,
+        30.2842393 ,  17.85495832,  48.98451946,  64.41068359,
+        36.34781249,  42.74888539,  61.54246983,  66.30245282,
+        36.05312667,  60.34839309,  54.81071621,  17.92651076,
+        42.2639048 ,  57.3297187 ,  60.90814653,   1.28832283,
+        19.61319887,   1.12418993,   2.14413319,  33.73727387,
+         6.39290255,  50.25653794,  15.22536139,   8.16518441,
+        43.13744103,  11.3460699 ,  10.91256245,  47.6356579 ,
+         8.6844718 ,  20.22451467,  30.37347596,  53.25636839,
+        46.91718731,  43.86829552,  48.28270364,  14.63490595,
+        52.6422268 ,  49.48825693,  13.94900732,  34.9545124 ,
+        15.26546121,  16.33555099,  37.39528069,   7.80218895,
+        30.26773344,   4.27814462,   5.7914157 ,   6.73778133,
+        19.39986213,  44.07643383,  31.49708685,   1.95598241,
+        17.32229931,  57.91127847,   1.47590365,  18.13554504,
+        48.20769933,  31.42970276,  68.28621842,  52.22813605,
+        23.13992289,  50.85657027,  14.99210941,  55.26321535,
+        14.1797156 ,   5.45952496,  48.81270969,  63.01683387,
+        25.16365542,  47.98931001,  19.37827414,  33.07197612,
+        48.49679153,  27.16663159,  28.91515434,  69.92270209,
+        57.19264096,  49.12477051,  44.82754443,  61.90155248,
+        24.72842686,  45.39266569,  33.17051334,   4.44022563,
+        66.39424189,  45.01630971,   1.59195637,  36.66054374,
+         1.54035206,  52.18984258,  12.65960367,  48.15929146,
+        41.07184402,  12.07298663,  53.19537698,  10.70635002,
+        25.05836709,  32.14612773,  41.87323068,  67.32080063,
+        48.66122266,  20.05242194,  12.20315989,  22.70932629,
+        60.90234432,   0.14143498,  56.98046841,   8.61064014,
+        39.11400974,  66.95683921,  16.45231842,  47.95652755,
+        64.60064791,  57.0939725 ,  52.59817392,  12.55326034,
+        20.17932996,  61.50305811,  36.49333568,  24.58049503,
+        58.63092406,  40.81717515,  23.18821241,  28.58986938,
+        66.05816925,  65.94128619,  63.15945601,  53.92936809,
+         3.45431239,   4.87568783,  32.82733725,  30.64270515,
+        24.56345283,  53.36305542,  68.16478275,  49.77128387,
+         8.7782343 ,  47.81074775,  24.2892622 ,  18.19833677]).astype(np.float64)
+
+
+
+def qim_encode_dither(pc_input, resolution_delta, rate):    
+    #for [0 0 0 0] modify nothing
+    c_out = np.empty((0,3), np.float64)
+    c = np.array([0.0,0.0,0.0]).astype(np.float64)  
+    count = 0
+
+    # message = [7, 7, 7, 3, 3, 4, 0, 0 ]
+    # message = [7, 7, 7, 7,7,7,7,7]
+    
+    msg_val = 0
+
+    for i in np.ndindex(pc_input.shape[:-1]):
+        print('i', i[0], pc_input[i])
+
+        # msg_val = message[i[0]]
+        # print('msg val', msg_val)
+        # bin_msg = bin(msg_val)[2:]
+        
+        
+        bin_msg = '{0:03b}'.format(msg_val)
+        print('message, bin message', msg_val, bin_msg)
+
+        if(bin_msg[0] == '0'):
+            d0 = d0_estimator(resolution_delta)
+            c[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d0)
+        elif(bin_msg[0] == '1'):
+            d1 = d1_estimator(resolution_delta)
+            c[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d1)
+        else:
+            print('invalid bin data')
+
+
+        if(bin_msg[1] == '0'):
+            d0 = d0_estimator(resolution_delta)
+            c[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d0)
+        elif(bin_msg[1] == '1'):
+            d1 = d1_estimator(resolution_delta)
+            c[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d1)
+        else:
+            print('invalid bin data')
+
+        if(bin_msg[2] == '0'):
+            d0 = d0_estimator(resolution_delta)
+            c[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d0)
+        elif(bin_msg[2] == '1'):
+            d1 = d1_estimator(resolution_delta)
+            c[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d1)
+        else:
+            print('invalid bin data')
+               
+        count+=1
+        if(count == rate):
+            msg_val += 1
+            msg_val = msg_val % 8
+            print('count, msg_val', count, msg_val)
+            count = 0
+
+        #print('count,message', count, message)
+        c_out = np.append(c_out, [c], axis = 0)
+        #print('c_out', c_out)
+        
+    return(np.array(c_out).astype(np.float64))
+
+
+def d0_estimator(step):
+    d0 = Q0_randomGen(step)
+    print('d0', d0)
+    return(d0)
+
+def d1_estimator(step):
+    d0 = d0_estimator(step)
+    if(d0 < 0):
+        d1 = d0 + (step/2.0)
+    else:
+        d1 = d0 - (step/2.0)
+    print('d1', d1)
+    return(d1)
+
+def random_generator(range):
+    #randin is a uniform distribution function
+    value = randint(0,range)
+    # print('rand val', value)
+    return(value)
+
+def Q0_randomGen_old(step):
+    Q0_vec = [-(step/2.0), -(step/4.0), -(step/8.0), (step/8.0), (step/4.0), (step/2.0)]
+    #generate a random index
+    index = random_generator(5)
+    #pick the value from the array Q0_vec
+    val = Q0_vec[index]
+    return(val)
+
+def Q0_randomGen(step):
+    a = -(step/2.0)
+    b = (step/2.0)
+    val = np.random.uniform(low=a, high=b, size=(1,))
+    return(val)
+
+def dither_quantization_encode(val, step, dm):
+    print('val', val)
+    val =  val + dm
+    print('val+dm', val)
+    quantized_value = (np.around(val/step)*step - dm).astype(np.float64)
+    return(quantized_value)
+    
+
+def qim_decode_dither(pc_input, resolution_delta, rate):
+
+        
+        message_decoded = []
+        #print('c_dist shape', c_dist)
+        # print('message', message)            
+        
+        for i in np.ndindex(pc_input.shape[:-1]):
+            c_dist = []
+            
+            print('*********************')    
+            print('i',i)
+            
+            c = np.array([0.0,0.0,0.0]).astype(np.float64)
+            c[0] = pc_input[i][0]
+            c[1] = pc_input[i][1]
+            c[2] = pc_input[i][2]
+            print ('C', c)
+
+            d = np.array([0.0,0.0,0.0]).astype(np.float64)
+            d0 = d0_estimator(resolution_delta)
+            d[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d0)
+
+            d0 = d0_estimator(resolution_delta)
+            d[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d0)
+
+            d0 = d0_estimator(resolution_delta)
+            d[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d0)
+
+            print ('D', d)
+
+            f = np.array([0.0,0.0,0.0]).astype(np.float64)  
+            d1 = d1_estimator(resolution_delta)
+            f[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d1)
+
+            d1 = d1_estimator(resolution_delta)
+            f[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d1)
+
+            d1 = d1_estimator(resolution_delta)
+            f[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d1)
+
+            print('F', f)
+
+            print('-------------')    
+
+            message = []
+            if(abs(c[0]-d[0]) < abs(c[0]-f[0])):
+                message.append(0)
+            else:
+                message.append(1)
+            if(abs(c[1]-d[1]) < abs(c[1]-f[1])):
+                message.append(0)
+            else:
+                message.append(1)
+            if(abs(c[2]-d[2]) < abs(c[2]-f[2])):
+                message.append(0)
+            else:
+                message.append(1)
+            
+            
+
+
+            message_decoded.append(message)
+
+        # print('message decoded', message_decoded)
+        return(message_decoded)
+
+def correlationCoefficient(X, Y, n) : 
+    sum_X = 0
+    sum_Y = 0
+    sum_XY = 0
+    squareSum_X = 0
+    squareSum_Y = 0
+      
+      
+    i = 0
+    while i < n : 
+        # sum of elements of array X. 
+        sum_X = sum_X + X[i] 
+          
+        # sum of elements of array Y. 
+        sum_Y = sum_Y + Y[i] 
+          
+        # sum of X[i] * Y[i]. 
+        sum_XY = sum_XY + X[i] * Y[i] 
+          
+        # sum of square of array elements. 
+        squareSum_X = squareSum_X + X[i] * X[i] 
+        squareSum_Y = squareSum_Y + Y[i] * Y[i] 
+          
+        i = i + 1
+       
+    # use formula for calculating correlation  
+    # coefficient. 
+    corr = (float)(n * sum_XY - sum_X * sum_Y)/(float)(math.sqrt((n * squareSum_X - sum_X * sum_X)* (n * squareSum_Y - sum_Y * sum_Y))) 
+    return corr 
+
+            
+if __name__ == '__main__':
+    seed(1)
+
+    # 1. encode the point cloud and extract the codebook
+
+    pc_input = pc_test.reshape(-1,3)
+    print('point cloud shape and values', pc_input.shape, pc_input)
+    
+    delta = 0.1
+    pc_output_dither = qim_encode_dither(pc_input, delta)
+    print('dither: output point cloud shape and values', pc_output_dither.shape, pc_output_dither)
+    
+    # pc_output_old = qim_encode_old(pc_input, delta)
+    # print('old: output point cloud shape and values', pc_output_old.shape, pc_output_old)
+    
+    decode = qim_decode_dither(pc_output_dither, delta)
+    decode_ = np.asarray(decode).reshape(-1)
+    print('decoded message', decode_.reshape(-1,3))
+
+    # encode = np.array([1,1,1, 1,1,1, 1,1,1, 1,1,1, 1,1,1, 1,1,1, 1,1,1, 1,1,1])
+    # encode_ = np.array([1,1,1, 1,1,1, 1,1,1, 0,1,1, 0,1,1, 1,0,0, 0,0,0, 0,0,0])
+    encode_ = np.array([1,0,1, 1,0,1, 1,0,1, 1,0,1, 0,1,1, 0,1,1, 0,1,1, 0,1,1])
+    print('encode', encode_.reshape(-1,3))
+
+
+    lcs = np.correlate(encode_, decode_)
+    print('lcs', lcs)
+    print('norm lcs', lcs/float(len(encode_)))
+    
+    # corr_val = (np.correlate(encode, decode)[0]/len(encode)).astype(np.float64)
+
+    # print('corr', corr_val ) #//len(encode))
+    n = len(encode_)
+
+  
+    # Function call to correlationCoefficient. 
+    print ('correlation {0:.6f}'.format(correlationCoefficient(encode_, decode_, n))) 
+
+    # //len(encode)).astype(np.float32))
+    # seed(1)
+    # for i in range(0,20):
+    #     print('Q0', Q0_randomGen(100))
+    # print('-------------')
+    # # seed(2)
+    # for i in range(0,20):
+    #     print('Q0', Q0_randomGen(100))
