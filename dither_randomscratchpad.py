@@ -94,6 +94,7 @@ pc_test = np.array([ 40.30910863,   8.56577551,  54.46320516,  60.39623699,
 
 
 
+
 def qim_encode_dither(pc_input, resolution_delta, rate):    
     #for [0 0 0 0] modify nothing
     c_out = np.empty((0,3), np.float64)
@@ -200,72 +201,72 @@ def dither_quantization_encode(val, step, dm):
     return(quantized_value)
     
 
-def qim_decode_dither(pc_input, resolution_delta, rate):
+# def qim_decode_dither(pc_input, resolution_delta):
 
         
-        message_decoded = []
-        #print('c_dist shape', c_dist)
-        # print('message', message)            
+#         message_decoded = []
+#         #print('c_dist shape', c_dist)
+#         # print('message', message)            
         
-        for i in np.ndindex(pc_input.shape[:-1]):
-            c_dist = []
+#         for i in np.ndindex(pc_input.shape[:-1]):
+#             c_dist = []
             
-            print('*********************')    
-            print('i',i)
+#             print('*********************')    
+#             print('i',i)
             
-            c = np.array([0.0,0.0,0.0]).astype(np.float64)
-            c[0] = pc_input[i][0]
-            c[1] = pc_input[i][1]
-            c[2] = pc_input[i][2]
-            print ('C', c)
+#             c = np.array([0.0,0.0,0.0]).astype(np.float64)
+#             c[0] = pc_input[i][0]
+#             c[1] = pc_input[i][1]
+#             c[2] = pc_input[i][2]
+#             print ('C', c)
 
-            d = np.array([0.0,0.0,0.0]).astype(np.float64)
-            d0 = d0_estimator(resolution_delta)
-            d[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d0)
+#             d = np.array([0.0,0.0,0.0]).astype(np.float64)
+#             d0 = d0_estimator(resolution_delta)
+#             d[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d0)
 
-            d0 = d0_estimator(resolution_delta)
-            d[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d0)
+#             d0 = d0_estimator(resolution_delta)
+#             d[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d0)
 
-            d0 = d0_estimator(resolution_delta)
-            d[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d0)
+#             d0 = d0_estimator(resolution_delta)
+#             d[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d0)
 
-            print ('D', d)
+#             print ('D', d)
 
-            f = np.array([0.0,0.0,0.0]).astype(np.float64)  
-            d1 = d1_estimator(resolution_delta)
-            f[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d1)
+#             f = np.array([0.0,0.0,0.0]).astype(np.float64)  
+#             d1 = d1_estimator(resolution_delta)
+#             f[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d1)
 
-            d1 = d1_estimator(resolution_delta)
-            f[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d1)
+#             d1 = d1_estimator(resolution_delta)
+#             f[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d1)
 
-            d1 = d1_estimator(resolution_delta)
-            f[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d1)
+#             d1 = d1_estimator(resolution_delta)
+#             f[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d1)
 
-            print('F', f)
+#             print('F', f)
 
-            print('-------------')    
+#             print('-------------')    
 
-            message = []
-            if(abs(c[0]-d[0]) < abs(c[0]-f[0])):
-                message.append(0)
-            else:
-                message.append(1)
-            if(abs(c[1]-d[1]) < abs(c[1]-f[1])):
-                message.append(0)
-            else:
-                message.append(1)
-            if(abs(c[2]-d[2]) < abs(c[2]-f[2])):
-                message.append(0)
-            else:
-                message.append(1)
+#             message = []
+#             if(abs(c[0]-d[0]) < abs(c[0]-f[0])):
+#                 message.append(0)
+#             else:
+#                 message.append(1)
+#             if(abs(c[1]-d[1]) < abs(c[1]-f[1])):
+#                 message.append(0)
+#             else:
+#                 message.append(1)
+#             if(abs(c[2]-d[2]) < abs(c[2]-f[2])):
+#                 message.append(0)
+#             else:
+#                 message.append(1)
             
-            
 
 
-            message_decoded.append(message)
 
-        # print('message decoded', message_decoded)
-        return(message_decoded)
+#             message_decoded.append(message)
+
+#         # print('message decoded', message_decoded)
+#         return(message_decoded)
 
 def correlationCoefficient(X, Y, n) : 
     sum_X = 0
@@ -297,30 +298,169 @@ def correlationCoefficient(X, Y, n) :
     corr = (float)(n * sum_XY - sum_X * sum_Y)/(float)(math.sqrt((n * squareSum_X - sum_X * sum_X)* (n * squareSum_Y - sum_Y * sum_Y))) 
     return corr 
 
+def encode_bitstream(rate, pc_length):
+    
+    count = 0
+    msg_val = 0
+    c_out = np.empty((0,3), np.int8)
+    c = np.array([0,0,0]) 
+    
+    for i in range(0,pc_length):
+        
+        bin_msg = '{0:03b}'.format(msg_val)
+        print('message, bin message', msg_val, bin_msg)
+        c[0] = int(bin_msg[0])
+        c[1] = int(bin_msg[1])
+        c[2] = int(bin_msg[2])
+        
+        ## uncomment this line if you want the entire point cloud
+        # c_out = np.append(c_out, [c], axis = 0)
+        #print('c_out', c_out)
+
+        count+=1
+        if(count == rate):
+            msg_val += 1
+            msg_val = msg_val % 8
+            print('count, msg_val', count, msg_val)
+            count = 0
+            #here we just put the average (same as prediction)
+            c_out = np.append(c_out, [c], axis = 0)
             
+
+    return(np.array(c_out).astype(np.int8))
+
+def qim_decode_dither(pc_input, resolution_delta, rate):
+
+        
+        message_decoded = []
+        #print('c_dist shape', c_dist)
+        # print('message', message)
+        #             
+        msg_val = 0
+
+        Q0_diff_sum = np.array([0.0,0.0,0.0]).astype(np.float64)
+        Q1_diff_sum = np.array([0.0,0.0,0.0]).astype(np.float64)
+
+        count = 0
+        for i in np.ndindex(pc_input.shape[:-1]): 
+            print('*********************')    
+            print('i',i)
+            
+            c = np.array([0.0,0.0,0.0]).astype(np.float64)
+            
+            # input row
+            c[0] = pc_input[i][0]
+            c[1] = pc_input[i][1]
+            c[2] = pc_input[i][2]
+            print ('C', c)
+
+            #Q0 decoder
+            d = np.array([0.0,0.0,0.0]).astype(np.float64)
+            d0 = d0_estimator(resolution_delta)
+            d[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d0)
+
+            d0 = d0_estimator(resolution_delta)
+            d[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d0)
+
+            d0 = d0_estimator(resolution_delta)
+            d[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d0)
+
+            print ('Q0 decoder', d)
+            
+            #Q1 decoder
+            f = np.array([0.0,0.0,0.0]).astype(np.float64)  
+            d1 = d1_estimator(resolution_delta)
+            f[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d1)
+
+            d1 = d1_estimator(resolution_delta)
+            f[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d1)
+
+            d1 = d1_estimator(resolution_delta)
+            f[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d1)
+
+            print('Q1 decoder', f)
+            
+
+            #accumulate sum until the rate bytes
+            count+=1
+
+            if(count == rate):
+                
+                msg_val += 1
+                msg_val = msg_val % 8
+                print('count, msg_val', count, msg_val)
+                count = 0
+                
+                
+                print('-------------')    
+
+                message = []
+
+                if(Q0_diff_sum[0] < Q1_diff_sum[0]):
+                    message.append(0)
+                else:
+                    message.append(1)
+                if(Q0_diff_sum[1] < Q1_diff_sum[1]):
+                    message.append(0)
+                else:
+                    message.append(1)
+                if(Q0_diff_sum[2] < Q1_diff_sum[2]):
+                    message.append(0)
+                else:
+                    message.append(1)
+
+                message_decoded.append(message)
+                
+                #reset the accumulators
+                Q0_diff_sum = np.array([0.0,0.0,0.0]).astype(np.float64)
+                Q1_diff_sum = np.array([0.0,0.0,0.0]).astype(np.float64)
+
+            else:
+                Q0_diff_sum[0] = Q0_diff_sum[0] + abs(c[0]-d[0])
+                Q1_diff_sum[0] = Q1_diff_sum[0] + abs(c[0]-f[0])
+
+                Q0_diff_sum[1] = Q0_diff_sum[1] + abs(c[1]-d[1])
+                Q1_diff_sum[1] = Q1_diff_sum[1] + abs(c[1]-f[1])
+                
+                Q0_diff_sum[2] = Q0_diff_sum[2] + abs(c[2]-d[2])
+                Q1_diff_sum[2] = Q1_diff_sum[2] + abs(c[2]-f[2])
+
+        # print('message decoded', message_decoded)
+        return(message_decoded)
+
 if __name__ == '__main__':
     seed(1)
 
     # 1. encode the point cloud and extract the codebook
+    block_size = 40
+    delta = 0.1
+    
 
     pc_input = pc_test.reshape(-1,3)
+    length_pc = len(pc_input)
     print('point cloud shape and values', pc_input.shape, pc_input)
     
-    delta = 0.1
-    pc_output_dither = qim_encode_dither(pc_input, delta)
+    
+    pc_output_dither = qim_encode_dither(pc_input, delta, block_size)
     print('dither: output point cloud shape and values', pc_output_dither.shape, pc_output_dither)
     
     # pc_output_old = qim_encode_old(pc_input, delta)
     # print('old: output point cloud shape and values', pc_output_old.shape, pc_output_old)
     
-    decode = qim_decode_dither(pc_output_dither, delta)
+    decode = qim_decode_dither(pc_output_dither, delta, block_size)
+    
     decode_ = np.asarray(decode).reshape(-1)
     print('decoded message', decode_.reshape(-1,3))
 
+    sample_encode = encode_bitstream(block_size, length_pc)
+    print('sample encode', sample_encode)
+    
+
     # encode = np.array([1,1,1, 1,1,1, 1,1,1, 1,1,1, 1,1,1, 1,1,1, 1,1,1, 1,1,1])
     # encode_ = np.array([1,1,1, 1,1,1, 1,1,1, 0,1,1, 0,1,1, 1,0,0, 0,0,0, 0,0,0])
-    encode_ = np.array([1,0,1, 1,0,1, 1,0,1, 1,0,1, 0,1,1, 0,1,1, 0,1,1, 0,1,1])
+    encode_ = np.asarray(sample_encode).reshape(-1)
     print('encode', encode_.reshape(-1,3))
+
 
 
     lcs = np.correlate(encode_, decode_)

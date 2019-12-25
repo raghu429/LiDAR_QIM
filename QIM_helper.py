@@ -252,7 +252,7 @@ label_tomove_index = 0
 resolution_delta = 3.0/100.0 
 resolution_halfdelta = resolution_delta/2.0
 
-numbits = 1
+numbits = 3
 
 m_factor = np.sqrt(numbits)
 
