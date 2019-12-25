@@ -13,6 +13,7 @@ import std_msgs.msg
 
 from helper_functions import *
 from QIM_helper import *
+from dither_randomscratchpad import *
 
 
 # Global Initialization
@@ -93,19 +94,23 @@ if __name__ == '__main__':
       # print('quantized input pc values', quantized_pc) 
 
       # Encode the point cloud
-      if(numbits == 3):
-        voxel_delta, voxel_halfdelta = qim_quantize_restricted_threebits_new( np.copy(pc_input))
-      elif(numbits == 2):
-        voxel_delta, voxel_halfdelta = qim_quantize_restricted_twobits( np.copy(pc_input))
-      elif(numbits == 1):
-        voxel_delta, voxel_halfdelta = qim_quantize_restricted_onebit( np.copy(pc_input))
-      else:
-        print('ERROR: INVALID noof bits')
+      block_size = 8
+      qim_encoded_pointcloud = qim_encode_dither(np.copy(pc_input), resolution_delta, block_size)    
+      # if(numbits == 3):
+      #   voxel_delta, voxel_halfdelta = qim_quantize_restricted_threebits_new( np.copy(pc_input))
+      # elif(numbits == 2):
+      #   voxel_delta, voxel_halfdelta = qim_quantize_restricted_twobits( np.copy(pc_input))
+      # elif(numbits == 1):
+      #   voxel_delta, voxel_halfdelta = qim_quantize_restricted_onebit( np.copy(pc_input))
+      # else:
+      #   print('ERROR: INVALID noof bits')
 
-      voxel_halfdelta_npy = np.array([voxel_halfdelta]).reshape(-1,3)
-      print('quant encoded shape', voxel_halfdelta_npy.shape)
+      # voxel_halfdelta_npy = np.array([voxel_halfdelta]).reshape(-1,3)
+      # print('quant encoded shape', voxel_halfdelta_npy.shape)
 
-      qim_encoded_pointcloud = getPointCloud_from_quantizedValues(  np.copy(voxel_halfdelta_npy), resolution_halfdelta, x,y,z)
+      # qim_encoded_pointcloud = getPointCloud_from_quantizedValues(  np.copy(voxel_halfdelta_npy), resolution_halfdelta, x,y,z)
+
+
       print('encoded pc shape', qim_encoded_pointcloud.shape)
 
       # save encoded clean point cloud

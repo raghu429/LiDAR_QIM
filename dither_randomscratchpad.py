@@ -12,7 +12,7 @@ import math
 from decimal import Decimal
 from random import randint
 from random import seed
-
+from scipy.stats import pearsonr
 #
 
 
@@ -107,7 +107,7 @@ def qim_encode_dither(pc_input, resolution_delta, rate):
     msg_val = 0
 
     for i in np.ndindex(pc_input.shape[:-1]):
-        print('i', i[0], pc_input[i])
+        # print('i', i[0], pc_input[i])
 
         # msg_val = message[i[0]]
         # print('msg val', msg_val)
@@ -115,32 +115,32 @@ def qim_encode_dither(pc_input, resolution_delta, rate):
         
         
         bin_msg = '{0:03b}'.format(msg_val)
-        print('message, bin message', msg_val, bin_msg)
+        # print('message, bin message', msg_val, bin_msg)
 
         if(bin_msg[0] == '0'):
-            d0 = d0_estimator(resolution_delta)
+            d0 = d0_estimator(resolution_delta, range_factor_glb)
             c[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d0)
         elif(bin_msg[0] == '1'):
-            d1 = d1_estimator(resolution_delta)
+            d1 = d1_estimator(resolution_delta, range_factor_glb)
             c[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d1)
         else:
             print('invalid bin data')
 
 
         if(bin_msg[1] == '0'):
-            d0 = d0_estimator(resolution_delta)
+            d0 = d0_estimator(resolution_delta, range_factor_glb)
             c[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d0)
         elif(bin_msg[1] == '1'):
-            d1 = d1_estimator(resolution_delta)
+            d1 = d1_estimator(resolution_delta, range_factor_glb)
             c[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d1)
         else:
             print('invalid bin data')
 
         if(bin_msg[2] == '0'):
-            d0 = d0_estimator(resolution_delta)
+            d0 = d0_estimator(resolution_delta, range_factor_glb)
             c[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d0)
         elif(bin_msg[2] == '1'):
-            d1 = d1_estimator(resolution_delta)
+            d1 = d1_estimator(resolution_delta, range_factor_glb)
             c[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d1)
         else:
             print('invalid bin data')
@@ -149,7 +149,7 @@ def qim_encode_dither(pc_input, resolution_delta, rate):
         if(count == rate):
             msg_val += 1
             msg_val = msg_val % 8
-            print('count, msg_val', count, msg_val)
+            # print('count, msg_val', count, msg_val)
             count = 0
 
         #print('count,message', count, message)
@@ -159,18 +159,18 @@ def qim_encode_dither(pc_input, resolution_delta, rate):
     return(np.array(c_out).astype(np.float64))
 
 
-def d0_estimator(step):
-    d0 = Q0_randomGen(step)
-    print('d0', d0)
+def d0_estimator(step, range_factor):
+    d0 = Q0_randomGen(step, range_factor)
+    # print('d0', d0)
     return(d0)
 
-def d1_estimator(step):
-    d0 = d0_estimator(step)
+def d1_estimator(step, range_factor):
+    d0 = d0_estimator(step, range_factor)
     if(d0 < 0):
         d1 = d0 + (step/2.0)
     else:
         d1 = d0 - (step/2.0)
-    print('d1', d1)
+    # print('d1', d1)
     return(d1)
 
 def random_generator(range):
@@ -187,16 +187,16 @@ def Q0_randomGen_old(step):
     val = Q0_vec[index]
     return(val)
 
-def Q0_randomGen(step):
-    a = -(step/2.0)
-    b = (step/2.0)
+def Q0_randomGen(step, step_range):
+    a = -(step/float(step_range))
+    b = (step/float(step_range))
     val = np.random.uniform(low=a, high=b, size=(1,))
     return(val)
 
 def dither_quantization_encode(val, step, dm):
-    print('val', val)
+    # print('val', val)
     val =  val + dm
-    print('val+dm', val)
+    # print('val+dm', val)
     quantized_value = (np.around(val/step)*step - dm).astype(np.float64)
     return(quantized_value)
     
@@ -296,7 +296,59 @@ def correlationCoefficient(X, Y, n) :
     # use formula for calculating correlation  
     # coefficient. 
     corr = (float)(n * sum_XY - sum_X * sum_Y)/(float)(math.sqrt((n * squareSum_X - sum_X * sum_X)* (n * squareSum_Y - sum_Y * sum_Y))) 
-    return corr 
+    return corr
+
+
+def get_tamperedindices_dither_threebits(decoded_codebook, rate, length, threshold):
+    #generate the encoded code book for the same rate
+    
+    error_counter = 0
+    suspect_indices = []
+    encoded_CB = encode_bitstream(rate, length)
+    # print('encoded_cb', encoded_CB, encoded_CB.shape)
+
+    #make sure the lengths of encoded and decoded code books are same
+    if(len(decoded_codebook) != len(encoded_CB)):
+       print('lengths do not match: DecodeCB, EncodeCB',  len(decoded_codebook), len(encoded_CB))
+        # return
+    else: 
+        print('encoded CB and decoded CB lengths match')
+        for index in range(len(decoded_codebook)):
+            changed_indices = 0
+            changed_indices = np.where(decoded_codebook[index] != encoded_CB[index])
+            
+                
+            if(len(changed_indices[0])):
+                print('length of changed indices', len(changed_indices[0]))
+                print('encoded CB val', encoded_CB[index])
+                print('decoded CB val', decoded_codebook[index])
+            
+                if(threshold == 'full'):
+                    #since the index starts from 0, to compensate for the first set of points we increase the index by 1 when trying to get the actual index value in suspect indices 
+                    suspect_indices.append((index+1)*rate)    
+                    for i in range(len(changed_indices[0])):
+                        # increment the error counter
+                        error_counter += 1
+        
+                elif(threshold == 'half'):
+                    if(len(changed_indices[0]) > 1):
+                        suspect_indices.append((index+1)*rate)    
+                        for i in range(len(changed_indices[0])):
+                        # increment the error counter
+                            error_counter += 1
+                else:
+                    print('invalid threshold option')
+
+    suspect_indices = np.array(suspect_indices)
+    # lensuspect = len(suspect_indices) 
+    # if(lensuspect == 0):
+    #     lensuspect = 0.1
+    print('error counter', error_counter)
+    #ber percentage
+    error_rate =  (error_counter/(3.0*len(decoded_codebook)))*100
+
+    return suspect_indices, error_rate 
+
 
 def encode_bitstream(rate, pc_length):
     
@@ -308,7 +360,7 @@ def encode_bitstream(rate, pc_length):
     for i in range(0,pc_length):
         
         bin_msg = '{0:03b}'.format(msg_val)
-        print('message, bin message', msg_val, bin_msg)
+        # print('message, bin message', msg_val, bin_msg)
         c[0] = int(bin_msg[0])
         c[1] = int(bin_msg[1])
         c[2] = int(bin_msg[2])
@@ -321,7 +373,7 @@ def encode_bitstream(rate, pc_length):
         if(count == rate):
             msg_val += 1
             msg_val = msg_val % 8
-            print('count, msg_val', count, msg_val)
+            # print('count, msg_val', count, msg_val)
             count = 0
             #here we just put the average (same as prediction)
             c_out = np.append(c_out, [c], axis = 0)
@@ -352,33 +404,33 @@ def qim_decode_dither(pc_input, resolution_delta, rate):
             c[0] = pc_input[i][0]
             c[1] = pc_input[i][1]
             c[2] = pc_input[i][2]
-            print ('C', c)
+            # print ('C', c)
 
             #Q0 decoder
             d = np.array([0.0,0.0,0.0]).astype(np.float64)
-            d0 = d0_estimator(resolution_delta)
+            d0 = d0_estimator(resolution_delta, range_factor_glb)
             d[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d0)
 
-            d0 = d0_estimator(resolution_delta)
+            d0 = d0_estimator(resolution_delta, range_factor_glb)
             d[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d0)
 
-            d0 = d0_estimator(resolution_delta)
+            d0 = d0_estimator(resolution_delta, range_factor_glb)
             d[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d0)
 
-            print ('Q0 decoder', d)
+            # print ('Q0 decoder', d)
             
             #Q1 decoder
             f = np.array([0.0,0.0,0.0]).astype(np.float64)  
-            d1 = d1_estimator(resolution_delta)
+            d1 = d1_estimator(resolution_delta, range_factor_glb)
             f[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d1)
 
-            d1 = d1_estimator(resolution_delta)
+            d1 = d1_estimator(resolution_delta, range_factor_glb)
             f[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d1)
 
-            d1 = d1_estimator(resolution_delta)
+            d1 = d1_estimator(resolution_delta, range_factor_glb)
             f[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d1)
 
-            print('Q1 decoder', f)
+            # print('Q1 decoder', f)
             
 
             #accumulate sum until the rate bytes
@@ -388,11 +440,11 @@ def qim_decode_dither(pc_input, resolution_delta, rate):
                 
                 msg_val += 1
                 msg_val = msg_val % 8
-                print('count, msg_val', count, msg_val)
+                # print('count, msg_val', count, msg_val)
                 count = 0
                 
                 
-                print('-------------')    
+                # print('-------------')    
 
                 message = []
 
@@ -416,27 +468,44 @@ def qim_decode_dither(pc_input, resolution_delta, rate):
                 Q1_diff_sum = np.array([0.0,0.0,0.0]).astype(np.float64)
 
             else:
-                Q0_diff_sum[0] = Q0_diff_sum[0] + abs(c[0]-d[0])
-                Q1_diff_sum[0] = Q1_diff_sum[0] + abs(c[0]-f[0])
+                # Q0_diff_sum[0] = Q0_diff_sum[0] + abs(c[0]-d[0])
+                # Q1_diff_sum[0] = Q1_diff_sum[0] + abs(c[0]-f[0])
 
-                Q0_diff_sum[1] = Q0_diff_sum[1] + abs(c[1]-d[1])
-                Q1_diff_sum[1] = Q1_diff_sum[1] + abs(c[1]-f[1])
+                # Q0_diff_sum[1] = Q0_diff_sum[1] + abs(c[1]-d[1])
+                # Q1_diff_sum[1] = Q1_diff_sum[1] + abs(c[1]-f[1])
                 
-                Q0_diff_sum[2] = Q0_diff_sum[2] + abs(c[2]-d[2])
-                Q1_diff_sum[2] = Q1_diff_sum[2] + abs(c[2]-f[2])
+                # Q0_diff_sum[2] = Q0_diff_sum[2] + abs(c[2]-d[2])
+                # Q1_diff_sum[2] = Q1_diff_sum[2] + abs(c[2]-f[2])
+
+                Q0_diff_sum[0] = Q0_diff_sum[0] + (c[0]-d[0])**2
+                Q1_diff_sum[0] = Q1_diff_sum[0] + (c[0]-f[0])**2
+
+                Q0_diff_sum[1] = Q0_diff_sum[1] + (c[1]-d[1])**2
+                Q1_diff_sum[1] = Q1_diff_sum[1] + (c[1]-f[1])**2
+                
+                Q0_diff_sum[2] = Q0_diff_sum[2] + (c[2]-d[2])**2
+                Q1_diff_sum[2] = Q1_diff_sum[2] + (c[2]-f[2])**2
 
         # print('message decoded', message_decoded)
         return(message_decoded)
 
 if __name__ == '__main__':
     seed(1)
+    range_factor_glb = 2.2
 
     # 1. encode the point cloud and extract the codebook
-    block_size = 40
+    block_size = 16
     delta = 0.1
     
 
     pc_input = pc_test.reshape(-1,3)
+
+    noise =  np.random.uniform(-delta/4, delta/4, 3*len(pc_input)).reshape(-1,3)
+    print ('noise', noise, noise.shape)
+
+    pc_input = pc_input + noise 
+
+
     length_pc = len(pc_input)
     print('point cloud shape and values', pc_input.shape, pc_input)
     
@@ -447,13 +516,14 @@ if __name__ == '__main__':
     # pc_output_old = qim_encode_old(pc_input, delta)
     # print('old: output point cloud shape and values', pc_output_old.shape, pc_output_old)
     
+
     decode = qim_decode_dither(pc_output_dither, delta, block_size)
     
     decode_ = np.asarray(decode).reshape(-1)
     print('decoded message', decode_.reshape(-1,3))
 
     sample_encode = encode_bitstream(block_size, length_pc)
-    print('sample encode', sample_encode)
+    # print('sample encode', sample_encode)
     
 
     # encode = np.array([1,1,1, 1,1,1, 1,1,1, 1,1,1, 1,1,1, 1,1,1, 1,1,1, 1,1,1])
@@ -475,6 +545,20 @@ if __name__ == '__main__':
   
     # Function call to correlationCoefficient. 
     print ('correlation {0:.6f}'.format(correlationCoefficient(encode_, decode_, n))) 
+
+    corr_pear = pearsonr(encode_, decode_)[0]
+    print('pearson corr ', corr_pear)
+
+    wrong_indices, ber =  get_tamperedindices_dither_threebits(decode_.reshape(-1,3), block_size, len(pc_input), 'full')
+
+    print('WI full', wrong_indices)
+    print('ber full', ber)
+
+
+    wrong_indices, ber =  get_tamperedindices_dither_threebits(decode_.reshape(-1,3), block_size, len(pc_input), 'half')
+
+    print('WI half', wrong_indices)
+    print('ber half', ber)
 
     # //len(encode)).astype(np.float32))
     # seed(1)

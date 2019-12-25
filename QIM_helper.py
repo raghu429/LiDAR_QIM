@@ -249,7 +249,7 @@ label_tomove_index = 0
 # resolution_list_cm = [5, 10, 20, 30, 35, 40]
 
 
-resolution_delta = 3.0/100.0 
+resolution_delta = 5.0/100.0 
 resolution_halfdelta = resolution_delta/2.0
 
 numbits = 3
@@ -691,7 +691,7 @@ def get_tamperedpc_indices(input_indices, tolerance):
     # return cluster_min_max
     return (np.array(cluster_min_max).reshape(-1,2) )
 
-        
+
 def get_tamperedindices_sequential_threebits(decoded_codebook):
     
     encode_cb_0 = np.array([0,0,0])
