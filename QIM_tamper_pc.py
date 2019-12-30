@@ -19,7 +19,7 @@ from QIM_helper import *
 
 
 #set the directory name for the modified point clouds
-forge_dir_path = os.path.join("./QIM_data", "forged")
+forge_dir_path = os.path.join("./QIM_data", "forged_QIM")
 #print('pc dir path', pc_dir_path)
 #if that directory doesn't already exists create one
 if not os.path.exists(forge_dir_path):
@@ -110,7 +110,7 @@ if __name__ == '__main__':
         f_h = str(sigma_list[i]).split('.')[0]
         s_h = str(sigma_list[i]).split('.')[1]
 
-        dst_dir_path = './QIM_data/forged/'+'sigma_'+ f_h + '-'+ s_h
+        dst_dir_path = './QIM_data/forged_QIM/'+'sigma_'+ f_h + '-'+ s_h
          
         if not os.path.exists(dst_dir_path):
             os.mkdir(dst_dir_path)

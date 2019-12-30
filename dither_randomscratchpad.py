@@ -95,7 +95,7 @@ pc_test = np.array([ 40.30910863,   8.56577551,  54.46320516,  60.39623699,
 
 
 
-def qim_encode_dither(pc_input, resolution_delta, rate):    
+def qim_encode_dither(pc_input, resolution_delta, rate, range_factor):    
     #for [0 0 0 0] modify nothing
     c_out = np.empty((0,3), np.float64)
     c = np.array([0.0,0.0,0.0]).astype(np.float64)  
@@ -118,29 +118,29 @@ def qim_encode_dither(pc_input, resolution_delta, rate):
         # print('message, bin message', msg_val, bin_msg)
 
         if(bin_msg[0] == '0'):
-            d0 = d0_estimator(resolution_delta, range_factor_glb)
+            d0 = d0_estimator(resolution_delta, range_factor)
             c[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d0)
         elif(bin_msg[0] == '1'):
-            d1 = d1_estimator(resolution_delta, range_factor_glb)
+            d1 = d1_estimator(resolution_delta, range_factor)
             c[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d1)
         else:
             print('invalid bin data')
 
 
         if(bin_msg[1] == '0'):
-            d0 = d0_estimator(resolution_delta, range_factor_glb)
+            d0 = d0_estimator(resolution_delta, range_factor)
             c[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d0)
         elif(bin_msg[1] == '1'):
-            d1 = d1_estimator(resolution_delta, range_factor_glb)
+            d1 = d1_estimator(resolution_delta, range_factor)
             c[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d1)
         else:
             print('invalid bin data')
 
         if(bin_msg[2] == '0'):
-            d0 = d0_estimator(resolution_delta, range_factor_glb)
+            d0 = d0_estimator(resolution_delta, range_factor)
             c[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d0)
         elif(bin_msg[2] == '1'):
-            d1 = d1_estimator(resolution_delta, range_factor_glb)
+            d1 = d1_estimator(resolution_delta, range_factor)
             c[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d1)
         else:
             print('invalid bin data')
@@ -381,7 +381,7 @@ def encode_bitstream(rate, pc_length):
 
     return(np.array(c_out).astype(np.int8))
 
-def qim_decode_dither(pc_input, resolution_delta, rate):
+def qim_decode_dither(pc_input, resolution_delta, rate, range_factor):
 
         
         message_decoded = []
@@ -408,26 +408,26 @@ def qim_decode_dither(pc_input, resolution_delta, rate):
 
             #Q0 decoder
             d = np.array([0.0,0.0,0.0]).astype(np.float64)
-            d0 = d0_estimator(resolution_delta, range_factor_glb)
+            d0 = d0_estimator(resolution_delta, range_factor)
             d[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d0)
 
-            d0 = d0_estimator(resolution_delta, range_factor_glb)
+            d0 = d0_estimator(resolution_delta, range_factor)
             d[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d0)
 
-            d0 = d0_estimator(resolution_delta, range_factor_glb)
+            d0 = d0_estimator(resolution_delta, range_factor)
             d[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d0)
 
             # print ('Q0 decoder', d)
             
             #Q1 decoder
             f = np.array([0.0,0.0,0.0]).astype(np.float64)  
-            d1 = d1_estimator(resolution_delta, range_factor_glb)
+            d1 = d1_estimator(resolution_delta, range_factor)
             f[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d1)
 
-            d1 = d1_estimator(resolution_delta, range_factor_glb)
+            d1 = d1_estimator(resolution_delta, range_factor)
             f[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d1)
 
-            d1 = d1_estimator(resolution_delta, range_factor_glb)
+            d1 = d1_estimator(resolution_delta, range_factor)
             f[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d1)
 
             # print('Q1 decoder', f)
@@ -491,11 +491,11 @@ def qim_decode_dither(pc_input, resolution_delta, rate):
 
 if __name__ == '__main__':
     seed(1)
-    range_factor_glb = 2.2
+    # range_factor_glb = 2.2
 
     # 1. encode the point cloud and extract the codebook
-    block_size = 16
-    delta = 0.1
+    # block_size = 16
+    # delta = 0.1
     
 
     pc_input = pc_test.reshape(-1,3)

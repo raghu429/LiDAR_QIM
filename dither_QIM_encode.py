@@ -19,7 +19,7 @@ from dither_randomscratchpad import *
 # Global Initialization
 
 #set the directory name for the encoded point clouds
-pc_dir_path = os.path.join("./QIM_data", "encoded_QIM")
+pc_dir_path = os.path.join("./QIM_data", "encoded_Dither")
 #print('pc dir path', pc_dir_path)
 #if that directory doesn't already exists create one
 if not os.path.exists(pc_dir_path):
@@ -54,16 +54,23 @@ if not os.path.exists(clean_pc_dir_path):
 if __name__ == '__main__':
 
   # ROS node initialization
-  rospy.init_node('QIM_encode', anonymous = True)
+  rospy.init_node('QIM_encode_dither', anonymous = True)
 
   # Traverse a given directory and work on each file
   # Directory of Kitti binary file
 
   data_directory = './QIM_data/test_data/'
+  #block size in points per frame
+  blockSize_list = ['256', '128', '64', '32', '16','8','4', '2']
+  # dither range in terms of step/'the number in the list'
+  ditherRange_list = ['2','3','4','8']  
 
   for filename in os.listdir(data_directory):
-    if filename.endswith(".bin")  and filename.startswith("000071"):
-    # if filename.endswith(".bin"):
+    
+    
+    # if filename.endswith(".bin")  and filename.startswith("000071"):
+    if filename.endswith(".bin"):
+    
       working_file_name = ntpath.basename(os.path.join(data_directory, filename)).split('.')[0]
       print('file currently working on %s'%(working_file_name) )
 
@@ -87,36 +94,32 @@ if __name__ == '__main__':
       #****************************************************************************************************************************
                                                   # Encode the point cloud
       #****************************************************************************************************************************
-      # c = np.around(((np.copy(pc_input) - np.array([x[0],y[0],z[0]])) / resolution_delta)).astype(np.int32)
-      # print('quantized input pc numpy representation', c)
+    for j in range(len(blockSize_list)):
+        filename_additions_one = []
+        block_size = int(blockSize_list[j])
+        print('block size', block_size)
+        # subdir_path = pc_dir_path + '/' + 'bs_' + blockSize_list[j]
+        filename_additions_one = 'bs' + blockSize_list[j]
+        for k in range(len(ditherRange_list)):
+            filename_additions_two = []
+            filename_additions_two = filename_additions_one + '_' + 'dr' + ditherRange_list[k]
+            
+            # print('output file name and path', op_dir) 
+            # Encode the point cloud
+            range_factor = int(ditherRange_list[k])
+            print('rage factor', range_factor)
+            # qim_encode_dither(pc_input, resolution_delta, rate, range_factor)
+            qim_encoded_pointcloud = qim_encode_dither(np.copy(pc_input), resolution_delta, block_size, range_factor)    
 
-      # quantized_pc  = c*resolution + np.array([x[0],y[0],z[0]])
-      # print('quantized input pc values', quantized_pc) 
+            print('encoded pc shape', qim_encoded_pointcloud.shape)
 
-      # Encode the point cloud
-      # #block_size = 8
-      # #qim_encoded_pointcloud = qim_encode_dither(np.copy(pc_input), resolution_delta, #block_size)    
-      
-      if(numbits == 3):
-        voxel_delta, voxel_halfdelta = qim_quantize_restricted_threebits_new( np.copy(pc_input))
-      elif(numbits == 2):
-        voxel_delta, voxel_halfdelta = qim_quantize_restricted_twobits( np.copy(pc_input))
-      elif(numbits == 1):
-        voxel_delta, voxel_halfdelta = qim_quantize_restricted_onebit( np.copy(pc_input))
-      else:
-        print('ERROR: INVALID noof bits')
+            # if not os.path.exists(op_dir):
+                # os.makedirs(op_dir)
 
-      voxel_halfdelta_npy = np.array([voxel_halfdelta]).reshape(-1,3)
-      print('quant encoded shape', voxel_halfdelta_npy.shape)
-
-      qim_encoded_pointcloud = getPointCloud_from_quantizedValues(  np.copy(voxel_halfdelta_npy), resolution_halfdelta, x,y,z)
-
-
-      print('encoded pc shape', qim_encoded_pointcloud.shape)
-
-      # save encoded clean point cloud
-      np.save(os.path.join(pc_dir_path, working_file_name_pcd), qim_encoded_pointcloud)
-  
+            filename_additions_two = filename_additions_two + '_' + working_file_name_pcd
+            # save encoded clean point cloud
+            np.save(os.path.join(pc_dir_path, filename_additions_two), qim_encoded_pointcloud)
+          
       #****************************************************************************************************************************
                                                   # Distortion
       #****************************************************************************************************************************

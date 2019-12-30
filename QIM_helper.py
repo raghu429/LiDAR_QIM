@@ -256,12 +256,13 @@ numbits = 3
 
 m_factor = np.sqrt(numbits)
 
-sigma_list_temp = [0.0, resolution_delta/(12*m_factor), resolution_delta/(10*m_factor), resolution_delta/(8*m_factor), resolution_delta/(6*m_factor), resolution_delta/(4*m_factor), resolution_delta/(3*m_factor), resolution_delta/(2*m_factor), resolution_delta/(m_factor), resolution_delta, 1.5*resolution_delta, 2*resolution_delta]
+# sigma_list_temp = [0.0, resolution_delta/(12*m_factor), resolution_delta/(10*m_factor), resolution_delta/(8*m_factor), resolution_delta/(6*m_factor), resolution_delta/(4*m_factor), resolution_delta/(3*m_factor), resolution_delta/(2*m_factor), resolution_delta/(m_factor), resolution_delta, 1.5*resolution_delta, 2*resolution_delta]
 
-sigma_list = np.round(sigma_list_temp, decimals=3)
+# sigma_list = np.round(sigma_list_temp, decimals=3)
 
-print('sigma list', sigma_list)
-# sigma_list = [0.0, 0.5/100.0, 1.0/100.0, 2.0/100.0, 3.0/100.0, 4.0/100.0, 6.0/100.0, 12.0/100.0, 18.0/100.0, 24.0/100.0, 32.0/100.0]
+# print('sigma list', sigma_list)
+
+sigma_list = [2*resolution_delta, resolution_delta, resolution_delta/2.0, resolution_delta/4.0, 0.0]
 
 
 def Hausdorff_dist_simple(vol_a,vol_b):

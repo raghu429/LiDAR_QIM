@@ -17,7 +17,7 @@ from QIM_helper import *
 
 
 
-encoded_data_directory = './QIM_data/encoded/'
+encoded_data_directory = './QIM_data/encoded_Dither/'
 clean_data_directory = './QIM_data/camfiltered/'
 label_dir = './QIM_data/label_2/'
 calib_dir = './QIM_data/calib/'
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     for i in range(len(sigma_list)):
         first_half = str(sigma_list[i]).split('.')[0]
         second_half = str(sigma_list[i]).split('.')[1]
-        source_dir_path = './QIM_data/forged/'+'sigma_'+ first_half + '-' + second_half
+        source_dir_path = './QIM_data/_Dither/'+'sigma_'+ first_half + '-' + second_half
         op_filename = []
         op_filename =  'sigma_'+ first_half + '-' + second_half + '_'
         
