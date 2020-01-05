@@ -138,20 +138,20 @@ if __name__ == '__main__':
     
     #raw point clouds
        
-    if(len(qim_encoded_pointcloud) !=0):
-      publish_pc2(qim_encoded_pointcloud, "/encode_qim_encoded_pointcloud")
-    else:
-      rospy.logerr("%s in encode is empty", "qim_encoded_pointcloud")
+    # if(len(qim_encoded_pointcloud) !=0):
+    #   publish_pc2(qim_encoded_pointcloud, "/encode_qim_encoded_pointcloud")
+    # else:
+    #   rospy.logerr("%s in encode is empty", "qim_encoded_pointcloud")
 
-    if(len(pc_camera_angle_filtered) !=0):
-      publish_pc2(pc_camera_angle_filtered, "/encode_pc_camera_angle_filtered")
-    else:
-      rospy.logerr("%s in encode is empty", "pc_camera_angle_filtered")
+    # if(len(pc_camera_angle_filtered) !=0):
+    #   publish_pc2(pc_camera_angle_filtered, "/encode_pc_camera_angle_filtered")
+    # else:
+    #   rospy.logerr("%s in encode is empty", "pc_camera_angle_filtered")
 
-    if(len(pc_groundplane_filtered) !=0):
-      publish_pc2(pc_groundplane_filtered, "/encode_pc_groundplane_filtered")
-    else:
-      rospy.logerr("%s in encode is empty", "pc_groundplane_filtered")
+    # if(len(pc_groundplane_filtered) !=0):
+    #   publish_pc2(pc_groundplane_filtered, "/encode_pc_groundplane_filtered")
+    # else:
+    #   rospy.logerr("%s in encode is empty", "pc_groundplane_filtered")
     
     
     print('spin count', i)

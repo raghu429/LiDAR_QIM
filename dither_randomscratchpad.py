@@ -308,20 +308,17 @@ def get_tamperedindices_dither_threebits(decoded_codebook, rate, length, thresho
     # print('encoded_cb', encoded_CB, encoded_CB.shape)
 
     #make sure the lengths of encoded and decoded code books are same
-    if(len(decoded_codebook) != len(encoded_CB)):
-       print('lengths do not match: DecodeCB, EncodeCB',  len(decoded_codebook), len(encoded_CB))
-        # return
-    else: 
-        print('encoded CB and decoded CB lengths match')
+    if(len(decoded_codebook) == len(encoded_CB)): 
+        # print('encoded CB and decoded CB lengths match')
         for index in range(len(decoded_codebook)):
             changed_indices = 0
             changed_indices = np.where(decoded_codebook[index] != encoded_CB[index])
             
                 
             if(len(changed_indices[0])):
-                print('length of changed indices', len(changed_indices[0]))
-                print('encoded CB val', encoded_CB[index])
-                print('decoded CB val', decoded_codebook[index])
+                # print('length of changed indices', len(changed_indices[0]))
+                # print('encoded CB val', encoded_CB[index])
+                # print('decoded CB val', decoded_codebook[index])
             
                 if(threshold == 'full'):
                     #since the index starts from 0, to compensate for the first set of points we increase the index by 1 when trying to get the actual index value in suspect indices 
@@ -339,11 +336,15 @@ def get_tamperedindices_dither_threebits(decoded_codebook, rate, length, thresho
                 else:
                     print('invalid threshold option')
 
-    suspect_indices = np.array(suspect_indices)
+    else:
+       print('lengths do not match: DecodeCB, EncodeCB',  len(decoded_codebook), len(encoded_CB))    
+    
+    suspect_indices = np.array(suspect_indices).astype(np.int32)-1 #this substracting of one is a hack to fix the value of index crossing the size of the point cloud
+
     # lensuspect = len(suspect_indices) 
     # if(lensuspect == 0):
     #     lensuspect = 0.1
-    print('error counter', error_counter)
+    # print('error counter', error_counter)
     #ber percentage
     error_rate =  (error_counter/(3.0*len(decoded_codebook)))*100
 
@@ -395,8 +396,8 @@ def qim_decode_dither(pc_input, resolution_delta, rate, range_factor):
 
         count = 0
         for i in np.ndindex(pc_input.shape[:-1]): 
-            print('*********************')    
-            print('i',i)
+            # print('*********************')    
+            # print('i',i)
             
             c = np.array([0.0,0.0,0.0]).astype(np.float64)
             
@@ -491,7 +492,7 @@ def qim_decode_dither(pc_input, resolution_delta, rate, range_factor):
 
 if __name__ == '__main__':
     seed(1)
-    # range_factor_glb = 2.2
+    range_factor = 2
 
     # 1. encode the point cloud and extract the codebook
     # block_size = 16
@@ -517,7 +518,7 @@ if __name__ == '__main__':
     # print('old: output point cloud shape and values', pc_output_old.shape, pc_output_old)
     
 
-    decode = qim_decode_dither(pc_output_dither, delta, block_size)
+    decode = qim_decode_dither(pc_output_dither, delta, block_size,range_factor)
     
     decode_ = np.asarray(decode).reshape(-1)
     print('decoded message', decode_.reshape(-1,3))
