@@ -61,9 +61,12 @@ if __name__ == '__main__':
 
   data_directory = './QIM_data/test_data/'
   #block size in points per frame
-  blockSize_list = ['256', '128', '64', '32', '16','8','4', '2']
+  blockSize_list = ['1024', '512', '256', '128', '64', '32', '16','8','4', '2']
+  # blockSize_list = ['1024', '512']
   # dither range in terms of step/'the number in the list'
-  ditherRange_list = ['2','3','4','8']  
+  #seems like 6 has been added lately .. I donot find the generated files with dr delta/6 
+  ditherRange_list = ['2','3','4','6','8'] 
+  
 
   for filename in os.listdir(data_directory):
     

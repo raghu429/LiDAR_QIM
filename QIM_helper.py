@@ -262,7 +262,19 @@ m_factor = np.sqrt(numbits)
 
 # print('sigma list', sigma_list)
 
-sigma_list = [2*resolution_delta, resolution_delta, resolution_delta/2.0, resolution_delta/4.0, 0.0]
+## This list was made for the dither modulation. SInce the dither range we are trying is between delta/2 and delta/8, we want to try the noise sigma values that are less than dmin/2*sqrt(3) .. for ex: for a dmin or dither range of delta/2 the sigma value would be 
+# delta/4*sqrt(3)
+#  
+
+# sigma_list_temp = [0.0, resolution_delta/(24*m_factor), resolution_delta/(16*m_factor), resolution_delta/(8*m_factor), resolution_delta/(6*m_factor), resolution_delta/(4*m_factor), resolution_delta/(2*m_factor)]
+
+#seems like we didnt generate files with this sigma hence I'm generating just for this sigma (March 17, 2020)
+sigma_list_temp = [resolution_delta/(2*m_factor)]
+
+
+sigma_list = np.round(sigma_list_temp, decimals=4)
+
+# sigma_list = [2*resolution_delta, resolution_delta, resolution_delta/2.0, resolution_delta/4.0, 0.0]
 
 
 def Hausdorff_dist_simple(vol_a,vol_b):
@@ -543,7 +555,7 @@ def get_boundingboxcorners(cluster_points):
     z_max = cluster_points[:,2].max()
 
     # print('cluter point list min', x_min, y_min, z_min )
-    # print('cluter point list min', x_max, y_max, z_max )
+    # print('cluter point list max', x_max, y_max, z_max )
     if( (x_min != 0) & (x_max !=0 )):  #this condition has been added t remove centeroids at (0,0,0) appeared when the clusters were removed
         cluster_corner = get_boundingboxcorners_local([x_min, y_min, z_min], [x_max, y_max, z_max])
         #print('corner shape & value', corner.shape, corner)

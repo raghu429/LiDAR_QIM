@@ -197,7 +197,8 @@ def dither_quantization_encode(val, step, dm):
     # print('val', val)
     val =  val + dm
     # print('val+dm', val)
-    quantized_value = (np.around(val/step)*step - dm).astype(np.float64)
+    # quantized_value = (np.around(val/step)*step - dm).astype(np.float64)
+    quantized_value = (  (np.around(val/step)*step).astype(np.float64) - dm).astype(np.float64)
     return(quantized_value)
     
 
@@ -304,6 +305,7 @@ def get_tamperedindices_dither_threebits(decoded_codebook, rate, length, thresho
     
     error_counter = 0
     suspect_indices = []
+    #generates dummy encoded bit stream with the rate upto the length specified by the 'length' parameter
     encoded_CB = encode_bitstream(rate, length)
     # print('encoded_cb', encoded_CB, encoded_CB.shape)
 
@@ -492,18 +494,18 @@ def qim_decode_dither(pc_input, resolution_delta, rate, range_factor):
 
 if __name__ == '__main__':
     seed(1)
-    range_factor = 2
+    range_factor_local = 3.0
 
     # 1. encode the point cloud and extract the codebook
-    # block_size = 16
-    # delta = 0.1
+    block_size_local = 16
+    delta = 0.1
     
 
     pc_input = pc_test.reshape(-1,3)
 
-    noise =  np.random.uniform(-delta/4, delta/4, 3*len(pc_input)).reshape(-1,3)
-    print ('noise', noise, noise.shape)
-
+    # noise =  np.random.uniform(-delta/4, delta/4, 3*len(pc_input)).reshape(-1,3)
+    # print ('noise', noise, noise.shape)
+    noise = 0.0
     pc_input = pc_input + noise 
 
 
@@ -511,19 +513,19 @@ if __name__ == '__main__':
     print('point cloud shape and values', pc_input.shape, pc_input)
     
     
-    pc_output_dither = qim_encode_dither(pc_input, delta, block_size)
+    pc_output_dither = qim_encode_dither(pc_input, delta, block_size_local, range_factor_local)
     print('dither: output point cloud shape and values', pc_output_dither.shape, pc_output_dither)
     
     # pc_output_old = qim_encode_old(pc_input, delta)
     # print('old: output point cloud shape and values', pc_output_old.shape, pc_output_old)
     
 
-    decode = qim_decode_dither(pc_output_dither, delta, block_size,range_factor)
+    decode = qim_decode_dither(pc_output_dither, delta, block_size_local,range_factor_local)
     
     decode_ = np.asarray(decode).reshape(-1)
     print('decoded message', decode_.reshape(-1,3))
 
-    sample_encode = encode_bitstream(block_size, length_pc)
+    sample_encode = encode_bitstream(block_size_local, length_pc)
     # print('sample encode', sample_encode)
     
 
@@ -550,13 +552,13 @@ if __name__ == '__main__':
     corr_pear = pearsonr(encode_, decode_)[0]
     print('pearson corr ', corr_pear)
 
-    wrong_indices, ber =  get_tamperedindices_dither_threebits(decode_.reshape(-1,3), block_size, len(pc_input), 'full')
+    wrong_indices, ber =  get_tamperedindices_dither_threebits(decode_.reshape(-1,3), block_size_local, len(pc_input), 'full')
 
     print('WI full', wrong_indices)
     print('ber full', ber)
 
 
-    wrong_indices, ber =  get_tamperedindices_dither_threebits(decode_.reshape(-1,3), block_size, len(pc_input), 'half')
+    wrong_indices, ber =  get_tamperedindices_dither_threebits(decode_.reshape(-1,3), block_size_local, len(pc_input), 'half')
 
     print('WI half', wrong_indices)
     print('ber half', ber)

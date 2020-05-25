@@ -18,8 +18,7 @@ from QIM_helper import *
 from dither_randomscratchpad import *
 
 
-# forged_data_directory = './QIM_data/forged_Dither/'
-forged_data_directory = './QIM_data/forged_Dither_new/'
+forged_data_directory = './QIM_data/forged_Dither/'
 encoded_data_directory = './QIM_data/encoded_Dither/'
 clean_data_directory = './QIM_data/camfiltered/'
 label_dir = './QIM_data/label_2/'
@@ -27,8 +26,7 @@ calib_dir = './QIM_data/calib/'
 img_dir = './QIM_data/test_img/'
 unwanted_img_dir = './QIM_data/test_img_unwanted/'
 
-op_dir = './QIM_data/decode_results/delta_5_100_half_newsigma/'
-# op_dir = './QIM_data/decode_results/
+op_dir = './QIM_data/temp_decode_results_ditherexperiment/'
 if not os.path.exists(op_dir):
   os.mkdir(op_dir)
 
@@ -56,7 +54,10 @@ if __name__ == '__main__':
     rospy.init_node('watermark_decode', anonymous = True)
  
     filecount = 0
+    match_string = re.compile(r'sigma_0-0072_uniform_add_bs[0-9]*_dr3_[0-9]*.npy')
+
     for filename in os.listdir(forged_data_directory):
+        
         tampered_pc = []
         clean_source_pc = []
         tampered_points = []
@@ -73,10 +74,14 @@ if __name__ == '__main__':
  
 
         # if filename.endswith(".npy") and filename.startswith("001179"):
-        if filename.endswith(".npy"):
-            
+        # if filename.endswith(".npy"):
+        
+        # if(filename == 'sigma_0-0072_uniform_add_bs128_dr3_000020.npy'):
+        if(match_string.match(filename)):
+            print('file name', filename) 
+            # break  
             split_file_name = []
-            working_file_name =[]
+            working_file_name = []
             
             working_file_name = ntpath.basename(os.path.join(forged_data_directory, filename)) 
             
@@ -96,21 +101,21 @@ if __name__ == '__main__':
             clean_source_pc = np.load(os.path.join(clean_data_directory, global_file_name))
             encoded_filename  = split_file_name[4] + '_' + split_file_name[5] + '_' + split_file_name[6]
 
-            # print('encoded file name', encoded_filename)
+            print('encoded file name', encoded_filename)
             # read the input tampered point cloud
-            # print('loading file: from ', working_file_name, os.path.join(forged_data_directory, working_file_name))
+            print('loading file: from ', working_file_name, os.path.join(forged_data_directory, working_file_name))
             tampered_pc = np.load(os.path.join(forged_data_directory, working_file_name))
-            # print('loaded file size', tampered_pc.size)
-            # print('loaded file shape', tampered_pc.shape)
+            print('loaded file size', tampered_pc.size)
+            print('loaded file shape', tampered_pc.shape)
 
             block_size = float(re.findall('\d+', split_file_name[4])[0])
             range_factor = float(re.findall('\d+', split_file_name[5])[0])
-            # print('range factor, block_size', range_factor, block_size)
+            print('range factor, block_size', range_factor, block_size)
             decode_ = qim_decode_dither(np.copy(tampered_pc), resolution_delta, block_size,range_factor)
 
             decoded_cb = np.asarray(decode_).reshape(-1,1)
             length_pc = len(tampered_pc)
-            # print('length of pc', length_pc)
+            print('length of pc', length_pc)
             encode_ = encode_bitstream(block_size, length_pc)
 
             encoded_cb = np.asarray(encode_).reshape(-1,1)
@@ -128,7 +133,7 @@ if __name__ == '__main__':
             # BER_final.append(b_errorRate)
             # tampered_indices = np.array([tampered_indices])
             
-            # print('length of suspect indices', tampered_indices.shape[0], tampered_indices)
+            print('length of suspect indices', tampered_indices.shape[0], tampered_indices)
             # print('suspect indice length', tampered_indices.shape[0], tampered_indices)
         
         #         #****************************************************************************************************************************
@@ -137,6 +142,7 @@ if __name__ == '__main__':
 
 
             corr_pear = pearsonr(encoded_cb, decoded_cb)[0]
+            
             # correlation_final.append(corr_pear)
 
             
@@ -154,8 +160,8 @@ if __name__ == '__main__':
                     glb_FP_count = 1
                 else:
                     glb_FP_count = 0
-                   
-
+                    if(len(tampered_indices) < 2):
+                        distortion = 75
 
                 if('del' in working_file_name):
                     # read the reference input cloud. Since the tampered pc wont have any points at these locations, if we extract points from it, we'll get no corners.
@@ -166,14 +172,14 @@ if __name__ == '__main__':
 
                 
                 tampered_points =  np.array(tampered_points)
-                # print("tampered points", tampered_points.shape, tampered_points)
-                # print("tampered points", tampered_points.shape)
+                print("tampered points", tampered_points.shape, tampered_points)
+                print("tampered points", tampered_points.shape)
                 
         #         #GT bounding box 
                 label_file_name = global_file_name.split('.')[0] + '.txt'
                 calib_file_name = global_file_name.split('.')[0] + '.txt'
 
-                # print('calib file name', calib_file_name)
+                print('calib file name', calib_file_name)
                 #read label and get the gt_bounding box corners
                 places, rotation, sizes = read_labels(os.path.join(label_dir, label_file_name), 'txt', calib_path = None , is_velo_cam=False, proj_velo=None)
             
@@ -183,13 +189,13 @@ if __name__ == '__main__':
         #             continue
 
                 gt_corners = visualize_groundtruth(os.path.join(calib_dir,calib_file_name), os.path.join(label_dir, label_file_name))
-                # print('corners', gt_corners.shape, gt_corners)
+                print('corners', gt_corners.shape, gt_corners[0])
 
                 if(gt_corners.shape[0]):
                     #pick a label .. here we are  picking label 0 .. just to be on the same side
                     logical_bound, x_range, y_range, z_range, y_max = get_cluster_logicalbound (np.copy(clean_source_pc), gt_corners[label_tomove_index])
                     a = np.array([np.where(logical_bound == True)])
-                    # print('logical bound shape', a.shape)
+                    print('logical bound shape', a.shape)
                 else:
                     print("GT label list is empty")
                     continue
@@ -202,11 +208,12 @@ if __name__ == '__main__':
 
 
                 gt_boundingbox = gt_boundingbox.reshape(-1,3)
+                print('Groundtruth bb', gt_boundingbox)
                 # gt_boundingbox = np.array([bb_a[0], bb_a[1], bb_a[2], bb_a[3]])
             
                 #Generated bounding box
                 generated_boundingbox = get_boundingboxcorners(tampered_points)
-                # print('generated bb', generated_boundingbox)
+                print('generated bb', generated_boundingbox)
                 generated_boundingbox = generated_boundingbox.reshape(-1,3)
                 # print("bb_b shape", bb_b.shape)
                 # generated_boundingbox = np.array([bb_b[0], bb_b[1], bb_b[2], bb_b[5]])
@@ -218,11 +225,9 @@ if __name__ == '__main__':
 
                 distortion = Hausdorff_dist(generated_boundingbox, gt_boundingbox )
                 
-                if(len(tampered_indices) < 2):
-                    distortion = 75
-                
+
             else:
-                # print('no tampered indices found')
+                print('no tampered indices not found')
                 if('clean' not in working_file_name):
                     glb_FN_count = 1
                     distortion = 100
@@ -230,45 +235,51 @@ if __name__ == '__main__':
                     glb_FN_count = 0
             
                     # shutil.move(img_dir+working_file_name+'.png', unwanted_img_dir)
-        else:
-            print('no file found')
+        
+            #      #****************************************************************************************************************************
+            #                         # Output
+            #         #****************************************************************************************************************************
+            #the output file name will have the same front portion as an input file. Lie for ex: an input file sigma_0-05_uniform_del_bs256_dr2_000125.npy will have the following output files for BER: sigma_0-05_uniform_del_bs256_dr2_000125_BER.npy. Similar trend for distortion, correlation and False Alarm 
+            
+            file_to_save = working_file_name.split('.')[0] 
+            
+            op_filename_BER = file_to_save+'_BER.npy'
+            op_filename_DIST = file_to_save+'_DIST.npy'
+            op_filename_CORR = file_to_save+'_CORR.npy'
+            # op_filename_VOL = file_to_save+'_VOL.npy'
+            op_filename_FA = file_to_save+'_FA.npy'
+            op_filename_FN = file_to_save+'_FN.npy'
+
+            np.save(os.path.join(op_dir, op_filename_BER), b_errorRate)
+            np.save(os.path.join(op_dir, op_filename_DIST), distortion)
+            np.save(os.path.join(op_dir, op_filename_CORR), corr_pear)
+            np.save(os.path.join(op_dir, op_filename_FN), glb_FN_count)
+            np.save(os.path.join(op_dir, op_filename_FA), glb_FP_count)
+
+            # console output
+            # print('********************************************************')
+            # print('\n')
+            # print('file name', op_filename)
+            # print('File count:', glb_file_count)
+            print ('FN:', glb_FN_count)
+            print ('FP:', glb_FP_count)
+            # print('temp array', temp_array)
+            print('correlation', corr_pear)
+            print('BER', b_errorRate)
+            # print('Vol', volume_final)
+            print('distortion', distortion)
+            filecount += 1
+            print(filecount)
+            
+            # break
+            
+        
+        # else:
+
+            # print('no file found')
     
         
-        #         #****************************************************************************************************************************
-        #                         # Output
-        #         #****************************************************************************************************************************
-        #the output file name will have the same front portion as an input file. Lie for ex: an input file sigma_0-05_uniform_del_bs256_dr2_000125.npy will have the following output files for BER: sigma_0-05_uniform_del_bs256_dr2_000125_BER.npy. Similar trend for distortion, correlation and False Alarm 
         
-        file_to_save = working_file_name.split('.')[0] 
-        
-        op_filename_BER = file_to_save+'_BER.npy'
-        op_filename_DIST = file_to_save+'_DIST.npy'
-        op_filename_CORR = file_to_save+'_CORR.npy'
-        op_filename_FN = file_to_save+'_FN.npy'
-        op_filename_FA = file_to_save+'_FA.npy'
-
-        np.save(os.path.join(op_dir, op_filename_BER), b_errorRate)
-        # np.save(os.path.join(op_dir, op_filename_DIST), distortion)
-        # np.save(os.path.join(op_dir, op_filename_CORR), corr_pear)
-        # np.save(os.path.join(op_dir, op_filename_VOL), volume_final)
-        # np.save(os.path.join(op_dir, op_filename_FN), glb_FN_count)
-        # np.save(os.path.join(op_dir, op_filename_FA), glb_FP_count)
-
-        # console output
-        # print('********************************************************')
-        # print('\n')
-        # print('file name', op_filename)
-        # print('File count:', glb_file_count)
-        # print ('FN:', glb_FN_count)
-        # print ('FP:', glb_FP_count)
-        # # print('temp array', temp_array)
-        # print('correlation', corr_pear)
-        # print('BER', b_errorRate)
-        # # print('Vol', volume_final)
-        # print('distortion', distortion)
-        filecount += 1
-        print(filecount)
-# break
 
     i = 0
     print ('***********************************')
@@ -302,6 +313,7 @@ if __name__ == '__main__':
         
         print('spin count', i)
         i += 1
+        break
     
 
     rospy.spin()

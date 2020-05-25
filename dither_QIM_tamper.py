@@ -108,6 +108,7 @@ if __name__ == '__main__':
     rospy.init_node('watermark_pcforge', anonymous = True)
 
     dst_dir_path = './QIM_data/forged_Dither/'
+    # dst_dir_path = './QIM_data/forged_Dither_new/'
     # print('dst_dir_path', dst_dir_path)
 
     if not os.path.exists(dst_dir_path):

@@ -60,3 +60,56 @@ Decode:
 
 On the decode end the point (10.4, 11.4, 12.4) is again converted to quantized value of (104, 114, 124) and checked for the even or oddness of the numbers. In this case three coordinates are even hence
 (0,0,0) code is written to the codebook and the process continues till the end of point cloud.
+
+
+## Updated documentation with images for the non dither code
+<!-- ![decode flow](IMG_7252.jpg) -->
+
+Old code flow
+
+<!-- ![old code flow](IMG_7251.jpg) -->
+
+
+## For the dither modulation here is the file naming convention
+
+Input to decoding:
+* ## sigma_{x-y} _ {uniform/Gaussian} _ {add/del/clean} _ bs{x} _ dr{x} _ filename.npy
+
+Output from decoding or the results:
+* ## sigma_{x-y} _ {uniform/Gaussian} _ {add/del/clean} _ bs{x} _ dr{x} _ {BER/CORR/DIST/FA/FN} _filename.npy
+
+
+
+### Here the sigma values are calculated based on the following logic. This list was made for the dither modulation. SInce the dither range we are trying is between delta/2 and delta/8, we want to try the noise sigma values that are less than dmin/2*sqrt(3) .. for ex: for a dmin or dither range of delta/2 the sigma value would be  delta/4\*sqrt(3)
+  
+* ## sigma_list_temp = [0.0, resolution_delta/(24\*m_factor), resolution_delta/(16\*m_factor), resolution_delta/(8\*m_factor), resolution_delta/(6\*m_factor), resolution_delta/(4\*m_factor), resolution_delta/(2*m_factor)]
+
+
+
+
+dither_results_generator.py is used to generate the csv file with rows representing the delta/2, delta/3, delta/4 and delta/8 dither ranges and the columns representing the corresponding values at the Block sizes of [2,4,8.16.32.64,128,256,512,1024]
+
+dither_results_plotter.py is used to generate the plots from the csv files generated above
+Before using the csv files for plotting we need to add the top row of the 
+Dither Range,L=2,L=4,L=8,L=16, L=32, L=64, L=128, L=256, L=512, L=1024
+
+and first column of the delta/2, delta/3, delta/4 and delta/8 values. For a delta value of 0.05 these values are
+0.0250
+0.0162
+0.0125
+0.0062
+
+After generating the plots adust the axes to fit the legend and labels in the figure
+configure subplot (bottom, right and top )
+Then save the figure as png
+
+
+For details on the number of points added during tampering and the number of points in the encoded point cloud
+file currently working on bs512_dr8_000818.npy
+('label file', '000818.txt')
+This is the number of points added for a step size of 0.05 cm 
+    ('cluster to copy shape', (2921, 3)) 
+This is the number of points in the encoded point cloud
+    ('encoded pc size', (29231, 3))
+This is the number of resulting points after the addition of object
+('Added pc size', (32152, 3))
