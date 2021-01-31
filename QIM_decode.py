@@ -2,7 +2,7 @@
 import sys
 import numpy as np
 # np.set_printoptions(threshold=np.nan)
-import pcl
+# import pcl
 import rospy
 import ntpath
 import sensor_msgs.point_cloud2 as pc2
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     for i in range(len(sigma_list)):
         first_half = str(sigma_list[i]).split('.')[0]
         second_half = str(sigma_list[i]).split('.')[1]
-        source_dir_path = './QIM_data/forged/'+'sigma_'+ first_half + '-' + second_half
+        source_dir_path = './QIM_data/forged_QIM/'+'sigma_'+ first_half + '-' + second_half
         op_filename = []
         op_filename =  'sigma_'+ first_half + '-' + second_half + '_'
         
@@ -126,24 +126,26 @@ if __name__ == '__main__':
                     if filename.endswith(".npy"):
                         working_file_name = ntpath.basename(os.path.join(selected_dir, filename)).split('.')[0] 
 
-                        # print('\n')
+                        print('\n')
                         # # print('\n')
-                        # print('file currently working on %s'%(working_file_name) )
+                        print('file currently working on %s'%(working_file_name) )
                         global_file_name  = working_file_name +'.npy'
                         # meta_file_name  = working_file_name + 'meta.npy'    
                         
                         #get the cluster source point cloud
                         clean_source_pc = np.load(os.path.join(clean_data_directory, global_file_name))
-                        
+                        print('clean file size', clean_source_pc.shape)
+
                         # read the input tampered point cloud
                         # print('loading file: from ', global_file_name, os.path.join(selected_dir, global_file_name))
                         tampered_pc = np.load(os.path.join(selected_dir, global_file_name))
-                        # print('loaded file size', tampered_pc.size)
+                        print('tampered file size', tampered_pc.shape)
 
                         # decoded_CB = qim_decode_new( np.copy(tampered_pc), resolution, x,y,z )
-
+                        # break
                         
-                        decoded_CB, decoded_quantized_values = qim_decode( np.copy(tampered_pc), resolution_halfdelta, numbits)
+                        decoded_CB, decoded_quantized_values = qim_decode( np.copy(Sept23=2015
+                        ), resolution_halfdelta, numbits)
 
                         decoded_codebook = np.array([decoded_CB]).reshape(-1,numbits)
 

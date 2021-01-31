@@ -249,16 +249,18 @@ label_tomove_index = 0
 # resolution_list_cm = [5, 10, 20, 30, 35, 40]
 
 
-resolution_delta = 5.0/100.0 
+# resolution_delta = 5.0/100.0 
+#for the visualization and the dither paper I'm testing with delta of 35 cm
+resolution_delta = 35.0/100.0 
 resolution_halfdelta = resolution_delta/2.0
 
 numbits = 3
 
 m_factor = np.sqrt(numbits)
 
-# sigma_list_temp = [0.0, resolution_delta/(12*m_factor), resolution_delta/(10*m_factor), resolution_delta/(8*m_factor), resolution_delta/(6*m_factor), resolution_delta/(4*m_factor), resolution_delta/(3*m_factor), resolution_delta/(2*m_factor), resolution_delta/(m_factor), resolution_delta, 1.5*resolution_delta, 2*resolution_delta]
+sigma_list_temp = [0.0, resolution_delta/(12*m_factor), resolution_delta/(10*m_factor), resolution_delta/(8*m_factor), resolution_delta/(6*m_factor), resolution_delta/(4*m_factor), resolution_delta/(3*m_factor), resolution_delta/(2*m_factor), resolution_delta/(m_factor), resolution_delta, 1.5*resolution_delta, 2*resolution_delta]
 
-# sigma_list = np.round(sigma_list_temp, decimals=3)
+sigma_list = np.round(sigma_list_temp, decimals=3)
 
 # print('sigma list', sigma_list)
 
@@ -269,10 +271,10 @@ m_factor = np.sqrt(numbits)
 # sigma_list_temp = [0.0, resolution_delta/(24*m_factor), resolution_delta/(16*m_factor), resolution_delta/(8*m_factor), resolution_delta/(6*m_factor), resolution_delta/(4*m_factor), resolution_delta/(2*m_factor)]
 
 #seems like we didnt generate files with this sigma hence I'm generating just for this sigma (March 17, 2020)
-sigma_list_temp = [resolution_delta/(2*m_factor)]
+# sigma_list_temp = [resolution_delta/(2*m_factor)]
 
 
-sigma_list = np.round(sigma_list_temp, decimals=4)
+# sigma_list = np.round(sigma_list_temp, decimals=4)
 
 # sigma_list = [2*resolution_delta, resolution_delta, resolution_delta/2.0, resolution_delta/4.0, 0.0]
 

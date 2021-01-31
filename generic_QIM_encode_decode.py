@@ -13,6 +13,7 @@ from decimal import Decimal
 from random import randint
 from random import seed
 from scipy.stats import pearsonr
+from QIM_helper import qim_dummy_encoded_pc, get_tamperedindices_sequential_threebits,get_tamperedindices_sequential_twobits, get_tamperedindices_sequential_onebit
 #
 
 
@@ -95,17 +96,48 @@ pc_test = np.array([ 40.30910863,   8.56577551,  54.46320516,  60.39623699,
 
 #task to make these functions generic and useful for 1D, 2D and 3D implementations and also for dither and normal QIM
 
+#for encode_type = dither, the rate, rangefactor vary
+#for encode_type = plain, the rate =1, rangefactor = 1
+#for dimension = 1, 2 or 3 the message bits encoded in the PC vary
+# usage
+# for a 2 bit message '10'normal qim encoding: qim_encode_generic(pc_input, resolution_delta, rate, range_factor, 'normal', 2, 3):
+#
+#
+#
+#
 
-def qim_encode_dither(pc_input, resolution_delta, rate, range_factor):    
+
+def qim_encode_generic(pc_input, resolution_delta, rate, range_factor, encode_type, dimension, message_value):    
     #for [0 0 0 0] modify nothing
-    c_out = np.empty((0,3), np.float64)
-    c = np.array([0.0,0.0,0.0]).astype(np.float64)  
-    count = 0
+     
+    
 
     # message = [7, 7, 7, 3, 3, 4, 0, 0 ]
     # message = [7, 7, 7, 7,7,7,7,7]
-    
-    msg_val = 0
+
+    #This message_value can be given a zero if you want the code to use the normal (0-7) for three bits, 0-3 for two bits and 0-1 for one bit. Or this can be given as an independant value to be embedded
+    msg_val = message_value
+    count = 0
+
+    if(encode_type == 'normal'):
+        rate = 1
+        range_factor = 1
+
+    if(dimension == 3):
+        c_out = np.empty((0,3), np.float64)
+        c = np.array([0.0,0.0,0.0]).astype(np.float64)
+        message_range = 8
+    elif(dimension == 2):
+        c_out = np.empty((0,2), np.float64)
+        c = np.array([0.0,0.0]).astype(np.float64)
+        message_range = 4
+    elif(dimension == 1):
+        c_out = np.empty((0,1), np.float64)
+        c = np.array([0.0]).astype(np.float64)
+        message_range = 2
+    else:
+        print('invalid dimension: use 1,2 or 3')
+        
 
     for i in np.ndindex(pc_input.shape[:-1]):
         # print('i', i[0], pc_input[i])
@@ -114,42 +146,72 @@ def qim_encode_dither(pc_input, resolution_delta, rate, range_factor):
         # print('msg val', msg_val)
         # bin_msg = bin(msg_val)[2:]
         
-        
-        bin_msg = '{0:03b}'.format(msg_val)
+        #by anaylyzing the ouput of the format function, seems like for the values that can be represented by single or two bits like 0,1,2,3 the 0:02b and 0:01b use singe or double bits but for higher order bits.. it doesnt matter like 0:02b.format(8) or 0:01b.format(8) would still give '1000'
+        #  
+        if(dimension == 3):
+            bin_msg = '{0:03b}'.format(msg_val)
+        elif(dimension == 2):
+            bin_msg = '{0:02b}'.format(msg_val)
+        elif(dimension ==1):
+            bin_msg = '{0:01b}'.format(msg_val)
+        else:
+            print('wrong dimension)')
+
         # print('message, bin message', msg_val, bin_msg)
+        if(dimension == 3 or dimension == 2 or dimension == 1 ):
+            if(bin_msg[0] == '0'):
+                if(encode_type == 'dither'):
+                    d0 = d0_estimator(resolution_delta, range_factor)
+                else:
+                    d0 = 0
+                c[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d0)
+            elif(bin_msg[0] == '1'):
+                if(encode_type == 'dither'):
+                    d1 = d1_estimator(resolution_delta, range_factor)
+                else:
+                    d1 = resolution_delta/2.0
 
-        if(bin_msg[0] == '0'):
-            d0 = d0_estimator(resolution_delta, range_factor)
-            c[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d0)
-        elif(bin_msg[0] == '1'):
-            d1 = d1_estimator(resolution_delta, range_factor)
-            c[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d1)
-        else:
-            print('invalid bin data')
+                c[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d1)
+            else:
+                print('invalid bin data')
 
+        if(dimension == 3 or dimension == 2):
+            if(bin_msg[1] == '0'):
+                if(encode_type == 'dither'):
+                    d0 = d0_estimator(resolution_delta, range_factor)
+                else:
+                    d0 = 0
+                c[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d0)
+            elif(bin_msg[1] == '1'):
+                if(encode_type == 'dither'):
+                    d1 = d1_estimator(resolution_delta, range_factor)
+                else:
+                    d1 = resolution_delta/2.0
 
-        if(bin_msg[1] == '0'):
-            d0 = d0_estimator(resolution_delta, range_factor)
-            c[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d0)
-        elif(bin_msg[1] == '1'):
-            d1 = d1_estimator(resolution_delta, range_factor)
-            c[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d1)
-        else:
-            print('invalid bin data')
+                c[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d1)
+            else:
+                print('invalid bin data')
 
-        if(bin_msg[2] == '0'):
-            d0 = d0_estimator(resolution_delta, range_factor)
-            c[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d0)
-        elif(bin_msg[2] == '1'):
-            d1 = d1_estimator(resolution_delta, range_factor)
-            c[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d1)
-        else:
-            print('invalid bin data')
-               
+        if(dimension == 3):
+            if(bin_msg[2] == '0'):
+                if(encode_type == 'dither'):
+                    d0 = d0_estimator(resolution_delta, range_factor)
+                else:
+                    d0 = 0
+                c[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d0)
+            elif(bin_msg[2] == '1'):
+                if(encode_type == 'dither'):
+                    d1 = d1_estimator(resolution_delta, range_factor)
+                else:
+                    d1 = resolution_delta/2.0 
+                c[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d1)
+            else:
+                print('invalid bin data')
+                
         count+=1
         if(count == rate):
             msg_val += 1
-            msg_val = msg_val % 8
+            msg_val = msg_val % message_range
             # print('count, msg_val', count, msg_val)
             count = 0
 
@@ -385,7 +447,7 @@ def encode_bitstream(rate, pc_length):
 
     return(np.array(c_out).astype(np.int8))
 
-def qim_decode_dither(pc_input, resolution_delta, rate, range_factor):
+def qim_decode_generic(pc_input, resolution_delta, rate, range_factor, dimension, encode_type):
 
         
         message_decoded = []
@@ -394,45 +456,120 @@ def qim_decode_dither(pc_input, resolution_delta, rate, range_factor):
         #             
         msg_val = 0
 
-        Q0_diff_sum = np.array([0.0,0.0,0.0]).astype(np.float64)
-        Q1_diff_sum = np.array([0.0,0.0,0.0]).astype(np.float64)
+        if(encode_type == 'normal'):
+            rate = 1
+            range_factor = 1
+
+        if(dimension == 3):
+            Q0_diff_sum = np.array([0.0,0.0,0.0]).astype(np.float64)
+            Q1_diff_sum = np.array([0.0,0.0,0.0]).astype(np.float64)
+            message_range = 8
+        elif (dimension == 2 ):
+            Q0_diff_sum = np.array([0.0,0.0]).astype(np.float64)
+            Q1_diff_sum = np.array([0.0,0.0]).astype(np.float64)
+            message_range = 4
+        elif (dimension == 1 ):
+            Q0_diff_sum = np.array([0.0]).astype(np.float64)
+            Q1_diff_sum = np.array([0.0]).astype(np.float64)
+            message_range = 2
 
         count = 0
         for i in np.ndindex(pc_input.shape[:-1]): 
             # print('*********************')    
             # print('i',i)
             
-            c = np.array([0.0,0.0,0.0]).astype(np.float64)
+
+            # c = np.array([0.0,0.0,0.0]).astype(np.float64)
             
-            # input row
-            c[0] = pc_input[i][0]
-            c[1] = pc_input[i][1]
-            c[2] = pc_input[i][2]
+            # # input row
+            # c[0] = pc_input[i][0]
+            # c[1] = pc_input[i][1]
+            # c[2] = pc_input[i][2]
             # print ('C', c)
 
             #Q0 decoder
-            d = np.array([0.0,0.0,0.0]).astype(np.float64)
-            d0 = d0_estimator(resolution_delta, range_factor)
-            d[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d0)
+            
+            # d = np.array([0.0,0.0,0.0]).astype(np.float64)
+            if(dimension == 3):
+                d = np.array([0.0,0.0,0.0]).astype(np.float64)
+            elif(dimension == 2):
+                d = np.array([0.0,0.0]).astype(np.float64)
+            elif(dimension == 1):
+                d = np.array([0.0]).astype(np.float64)
+            else:
+                print('invalid dimension: use 1,2 or 3')
 
-            d0 = d0_estimator(resolution_delta, range_factor)
-            d[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d0)
 
-            d0 = d0_estimator(resolution_delta, range_factor)
-            d[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d0)
+
+            if(dimension == 3 or dimension == 2 or dimension == 1):
+                if(encode_type == 'dither'):
+                    d0 = d0_estimator(resolution_delta, range_factor)
+                else:
+                    d0 = 0
+
+                d[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d0)
+
+            if(dimension == 3 or dimension == 2):
+
+                if(encode_type == 'dither'):
+                    d0 = d0_estimator(resolution_delta, range_factor)
+                else:
+                    d0 = 0
+
+                # d0 = d0_estimator(resolution_delta, range_factor)
+                d[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d0)
+
+            if(dimension == 3 ):
+                # d0 = d0_estimator(resolution_delta, range_factor)
+                if(encode_type == 'dither'):
+                    d0 = d0_estimator(resolution_delta, range_factor)
+                else:
+                    d0 = 0
+                d[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d0)
 
             # print ('Q0 decoder', d)
             
+
+            # f = np.array([0.0,0.0,0.0]).astype(np.float64)
+            
+                
+            if(dimension == 3):
+                f = np.array([0.0,0.0,0.0]).astype(np.float64)
+            elif(dimension == 2):
+                f = np.array([0.0,0.0]).astype(np.float64)
+            elif(dimension == 1):
+                f = np.array([0.0]).astype(np.float64)
+            else:
+                print('invalid dimension: use 1,2 or 3')
+            
+            
             #Q1 decoder
-            f = np.array([0.0,0.0,0.0]).astype(np.float64)  
-            d1 = d1_estimator(resolution_delta, range_factor)
-            f[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d1)
+            if(dimension == 3 or dimension == 2 or dimension == 1):  
+                # d1 = d1_estimator(resolution_delta, range_factor)
+                
+                if(encode_type == 'dither'):
+                    d1 = d1_estimator(resolution_delta, range_factor)
+                else:
+                    d1 = resolution_delta/2.0
+                
+                f[0] = dither_quantization_encode(pc_input[i][0], resolution_delta, d1)
 
-            d1 = d1_estimator(resolution_delta, range_factor)
-            f[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d1)
+            if(dimension == 3 or dimension == 2 ):
+                if(encode_type == 'dither'):
+                    d1 = d1_estimator(resolution_delta, range_factor)
+                else:
+                    d1 = resolution_delta/2.0
+                # d1 = d1_estimator(resolution_delta, range_factor)
+                f[1] = dither_quantization_encode(pc_input[i][1], resolution_delta, d1)
 
-            d1 = d1_estimator(resolution_delta, range_factor)
-            f[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d1)
+            if(dimension == 3 ):
+                # d1 = d1_estimator(resolution_delta, range_factor)
+                if(encode_type == 'dither'):
+                    d1 = d1_estimator(resolution_delta, range_factor)
+                else:
+                    d1 = resolution_delta/2.0                
+                
+                f[2] = dither_quantization_encode(pc_input[i][2], resolution_delta, d1)
 
             # print('Q1 decoder', f)
             
@@ -443,7 +580,7 @@ def qim_decode_dither(pc_input, resolution_delta, rate, range_factor):
             if(count == rate):
                 
                 msg_val += 1
-                msg_val = msg_val % 8
+                msg_val = msg_val % message_range
                 # print('count, msg_val', count, msg_val)
                 count = 0
                 
@@ -451,27 +588,39 @@ def qim_decode_dither(pc_input, resolution_delta, rate, range_factor):
                 # print('-------------')    
 
                 message = []
-
-                if(Q0_diff_sum[0] < Q1_diff_sum[0]):
-                    message.append(0)
-                else:
-                    message.append(1)
-                if(Q0_diff_sum[1] < Q1_diff_sum[1]):
-                    message.append(0)
-                else:
-                    message.append(1)
-                if(Q0_diff_sum[2] < Q1_diff_sum[2]):
-                    message.append(0)
-                else:
-                    message.append(1)
+                #pick the value 
+                if(dimension == 3 or dimension == 2 or dimension == 1):
+                    if(Q0_diff_sum[0] < Q1_diff_sum[0]):
+                        message.append(0)
+                    else:
+                        message.append(1)
+                if(dimension == 3 or dimension == 2):
+                    if(Q0_diff_sum[1] < Q1_diff_sum[1]):
+                        message.append(0)
+                    else:
+                        message.append(1)
+                if(dimension == 3):
+                    if(Q0_diff_sum[2] < Q1_diff_sum[2]):
+                        message.append(0)
+                    else:
+                        message.append(1)
 
                 message_decoded.append(message)
                 
                 #reset the accumulators
-                Q0_diff_sum = np.array([0.0,0.0,0.0]).astype(np.float64)
-                Q1_diff_sum = np.array([0.0,0.0,0.0]).astype(np.float64)
+                # Q0_diff_sum = np.array([0.0,0.0,0.0]).astype(np.float64)
+                # Q1_diff_sum = np.array([0.0,0.0,0.0]).astype(np.float64)
+                if(dimension == 3):
+                    Q0_diff_sum = np.array([0.0,0.0,0.0]).astype(np.float64)
+                    Q1_diff_sum = np.array([0.0,0.0,0.0]).astype(np.float64)
+                elif (dimension == 2 ):
+                    Q0_diff_sum = np.array([0.0,0.0]).astype(np.float64)
+                    Q1_diff_sum = np.array([0.0,0.0]).astype(np.float64)
+                elif (dimension == 1 ):
+                    Q0_diff_sum = np.array([0.0]).astype(np.float64)
+                    Q1_diff_sum = np.array([0.0]).astype(np.float64)
 
-            else:
+            else: #add the difference values until the count meets the rate
                 # Q0_diff_sum[0] = Q0_diff_sum[0] + abs(c[0]-d[0])
                 # Q1_diff_sum[0] = Q1_diff_sum[0] + abs(c[0]-f[0])
 
@@ -481,14 +630,15 @@ def qim_decode_dither(pc_input, resolution_delta, rate, range_factor):
                 # Q0_diff_sum[2] = Q0_diff_sum[2] + abs(c[2]-d[2])
                 # Q1_diff_sum[2] = Q1_diff_sum[2] + abs(c[2]-f[2])
 
-                Q0_diff_sum[0] = Q0_diff_sum[0] + (c[0]-d[0])**2
-                Q1_diff_sum[0] = Q1_diff_sum[0] + (c[0]-f[0])**2
-
-                Q0_diff_sum[1] = Q0_diff_sum[1] + (c[1]-d[1])**2
-                Q1_diff_sum[1] = Q1_diff_sum[1] + (c[1]-f[1])**2
-                
-                Q0_diff_sum[2] = Q0_diff_sum[2] + (c[2]-d[2])**2
-                Q1_diff_sum[2] = Q1_diff_sum[2] + (c[2]-f[2])**2
+                if(dimension == 3 or dimension == 2 or dimension == 1):
+                    Q0_diff_sum[0] = Q0_diff_sum[0] + (c[0]-d[0])**2
+                    Q1_diff_sum[0] = Q1_diff_sum[0] + (c[0]-f[0])**2
+                if(dimension == 3 or dimension == 2 ):
+                    Q0_diff_sum[1] = Q0_diff_sum[1] + (c[1]-d[1])**2
+                    Q1_diff_sum[1] = Q1_diff_sum[1] + (c[1]-f[1])**2
+                if(dimension == 3 ):
+                    Q0_diff_sum[2] = Q0_diff_sum[2] + (c[2]-d[2])**2
+                    Q1_diff_sum[2] = Q1_diff_sum[2] + (c[2]-f[2])**2
 
         # print('message decoded', message_decoded)
         return(message_decoded)
@@ -513,15 +663,15 @@ if __name__ == '__main__':
     length_pc = len(pc_input)
     print('point cloud shape and values', pc_input.shape, pc_input)
     
-    
-    pc_output_dither = qim_encode_dither(pc_input, delta, block_size_local, range_factor_local)
+    #usage: def qim_encode_generic(pc_input, resolution_delta, rate, range_factor, encode_type, dimension, message_value):  
+    pc_output_dither = qim_encode_generic(pc_input, delta, block_size_local, range_factor_local, 'normal', 3 , 0)
     print('dither: output point cloud shape and values', pc_output_dither.shape, pc_output_dither)
     
     # pc_output_old = qim_encode_old(pc_input, delta)
     # print('old: output point cloud shape and values', pc_output_old.shape, pc_output_old)
     
-
-    decode = qim_decode_dither(pc_output_dither, delta, block_size_local,range_factor_local)
+    #usage: def qim_decode_generic(pc_input, resolution_delta, rate, range_factor, dimension, encode_type):
+    decode = qim_decode_generic(pc_output_dither, delta, block_size_local,range_factor_local, 3, 'normal')
     
     decode_ = np.asarray(decode).reshape(-1)
     print('decoded message', decode_.reshape(-1,3))

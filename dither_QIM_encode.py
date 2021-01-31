@@ -71,8 +71,8 @@ if __name__ == '__main__':
   for filename in os.listdir(data_directory):
     
     
-    # if filename.endswith(".bin")  and filename.startswith("000071"):
-    if filename.endswith(".bin"):
+    if filename.endswith(".bin")  and filename.startswith("000071"):
+    # if filename.endswith(".bin"):
     
       working_file_name = ntpath.basename(os.path.join(data_directory, filename)).split('.')[0]
       print('file currently working on %s'%(working_file_name) )
@@ -97,38 +97,38 @@ if __name__ == '__main__':
       #****************************************************************************************************************************
                                                   # Encode the point cloud
       #****************************************************************************************************************************
-    for j in range(len(blockSize_list)):
-        filename_additions_one = []
-        block_size = int(blockSize_list[j])
-        print('block size', block_size)
-        # subdir_path = pc_dir_path + '/' + 'bs_' + blockSize_list[j]
-        filename_additions_one = 'bs' + blockSize_list[j]
-        for k in range(len(ditherRange_list)):
-            filename_additions_two = []
-            filename_additions_two = filename_additions_one + '_' + 'dr' + ditherRange_list[k]
+      for j in range(len(blockSize_list)):
+          filename_additions_one = []
+          block_size = int(blockSize_list[j])
+          print('block size', block_size)
+          # subdir_path = pc_dir_path + '/' + 'bs_' + blockSize_list[j]
+          filename_additions_one = 'bs' + blockSize_list[j]
+          for k in range(len(ditherRange_list)):
+              filename_additions_two = []
+              filename_additions_two = filename_additions_one + '_' + 'dr' + ditherRange_list[k]
+              
+              # print('output file name and path', op_dir) 
+              # Encode the point cloud
+              range_factor = int(ditherRange_list[k])
+              print('rage factor', range_factor)
+              # qim_encode_dither(pc_input, resolution_delta, rate, range_factor)
+              qim_encoded_pointcloud = qim_encode_dither(np.copy(pc_input), resolution_delta, block_size, range_factor)    
+
+              print('encoded pc shape', qim_encoded_pointcloud.shape)
+
+              # if not os.path.exists(op_dir):
+                  # os.makedirs(op_dir)
+
+              filename_additions_two = filename_additions_two + '_' + working_file_name_pcd
+              # save encoded clean point cloud
+              np.save(os.path.join(pc_dir_path, filename_additions_two), qim_encoded_pointcloud)
             
-            # print('output file name and path', op_dir) 
-            # Encode the point cloud
-            range_factor = int(ditherRange_list[k])
-            print('rage factor', range_factor)
-            # qim_encode_dither(pc_input, resolution_delta, rate, range_factor)
-            qim_encoded_pointcloud = qim_encode_dither(np.copy(pc_input), resolution_delta, block_size, range_factor)    
+        #****************************************************************************************************************************
+                                                    # Distortion
+        #****************************************************************************************************************************
 
-            print('encoded pc shape', qim_encoded_pointcloud.shape)
-
-            # if not os.path.exists(op_dir):
-                # os.makedirs(op_dir)
-
-            filename_additions_two = filename_additions_two + '_' + working_file_name_pcd
-            # save encoded clean point cloud
-            np.save(os.path.join(pc_dir_path, filename_additions_two), qim_encoded_pointcloud)
-          
-      #****************************************************************************************************************************
-                                                  # Distortion
-      #****************************************************************************************************************************
-
-      # distortion = Hausdorff_dist(pc_groundplane_filtered, encoded_pointcloud )
-      # print('distortion', distortion)
+        # distortion = Hausdorff_dist(pc_groundplane_filtered, encoded_pointcloud )
+        # print('distortion', distortion)
 
        
 
